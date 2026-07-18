@@ -44,6 +44,7 @@ def inject_models():
     """Inject mock scaler and models into backend.main module globals."""
     original_scaler = main_module.scaler
     original_models = main_module.models.copy()
+    original_centroids = getattr(main_module, 'db_centroids', None)
 
     main_module.scaler = _mock_scaler()
     main_module.models = {
@@ -55,11 +56,13 @@ def inject_models():
     }
     # Disable xgb_shap_explainer to avoid SHAP calculation errors in mock
     main_module.xgb_shap_explainer = None
+    main_module.db_centroids = {"Champions": np.zeros(9)}
 
     yield
 
     main_module.scaler = original_scaler
     main_module.models = original_models
+    main_module.db_centroids = original_centroids
 
 
 class TestHealthEndpoint:
@@ -374,6 +377,251 @@ class TestIntegration:
         # 4. Check prediction history
         history = client.get("/api/predict/history")
         assert history.status_code == 200
+
+
+class TestExtraEndpointsSuccess:
+    """Test suite for additional backend endpoints to gain high coverage."""
+    
+    @pytest.fixture(autouse=True)
+    def setup_models(self, inject_models):
+        """Auto-use inject_models to avoid 503 errors."""
+        pass
+
+    def test_predict_batch_success(self):
+        """Batch prediction returns processed CSV file successfully."""
+        import io
+        csv_data = (
+            "Recency,Frequency,Monetary,AvgOrderValue,UniqueProducts,ReturnRate,"
+            "CustomerLifetimeDays,PurchaseFrequencyMonthly,AvgQuantityPerOrder\n"
+            "30.0,5.0,500.0,100.0,3.0,0.1,180.0,2.5,10.0\n"
+        )
+        files = {"file": ("test.csv", csv_data, "text/csv")}
+        response = client.post("/api/predict/batch", files=files)
+        assert response.status_code == 200
+        assert "text/csv" in response.headers["content-type"]
+        assert "Predicted_Segment" in response.text
+        assert "Predicted_Purchase_Label" in response.text
+        assert "Purchase_Probability" in response.text
+
+    def test_predict_batch_missing_columns(self):
+        """Batch prediction fails if required columns are missing."""
+        csv_data = "Recency,Frequency,Monetary\n30.0,5.0,500.0\n"
+        files = {"file": ("test.csv", csv_data, "text/csv")}
+        response = client.post("/api/predict/batch", files=files)
+        assert response.status_code == 400
+        assert "missing required feature columns" in response.json()["detail"]
+
+    def test_trigger_drift_check(self):
+        """POST /api/drift/check triggers the drift detection pipeline."""
+        mock_report = {"overall_status": "Stable", "metrics": []}
+        with patch('backend.pipeline.drift_detection.run_drift_detection', return_value=mock_report):
+            response = client.post("/api/drift/check")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert data["data"] == mock_report
+
+    def test_trigger_drift_check_failure(self):
+        """POST /api/drift/check handles exceptions gracefully."""
+        with patch('backend.pipeline.drift_detection.run_drift_detection', side_effect=Exception("Drift error")):
+            response = client.post("/api/drift/check")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is False
+            assert "Drift error" in data["error"]
+
+    def test_post_retrain_triggers_task(self):
+        """POST /api/models/retrain triggers retraining background task."""
+        with patch('backend.main.execute_pipeline_retraining') as mock_execute_retrain:
+            response = client.post("/api/models/retrain")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert "launched in background" in data["message"]
+
+    def test_get_diagram_png_success(self):
+        """GET /api/diagrams/png/{name} returns FileResponse."""
+        with patch('backend.main.get_mermaid_png_path', return_value='mock_image.png'), \
+             patch('backend.main.FileResponse') as mock_fileresponse:
+            mock_fileresponse.return_value = "file_response_object"
+            response = client.get("/api/diagrams/png/sys_arch")
+            assert response.status_code == 200
+
+    def test_get_diagram_png_failure(self):
+        """GET /api/diagrams/png/{name} handles error."""
+        with patch('backend.main.get_mermaid_png_path', side_effect=ValueError("Unknown diagram")):
+            response = client.get("/api/diagrams/png/invalid_name")
+            assert response.status_code == 500
+
+    def test_download_diagram_png_success(self):
+        """GET /api/diagrams/download-png/{name} sets correct headers."""
+        with patch('backend.main.get_mermaid_png_path', return_value='mock_image.png'), \
+             patch('backend.main.FileResponse') as mock_fileresponse:
+            mock_fileresponse.return_value = "file_response_object"
+            response = client.get("/api/diagrams/download-png/sys_arch")
+            assert response.status_code == 200
+
+    def test_get_diagrams_html_page_success(self):
+        """GET /diagrams serves the HTML page if it exists."""
+        with patch('os.path.exists', return_value=True), \
+             patch('backend.main.FileResponse') as mock_fileresponse:
+            mock_fileresponse.return_value = "html_response_object"
+            response = client.get("/diagrams")
+            assert response.status_code == 200
+
+    def test_get_diagrams_html_page_not_found(self):
+        """GET /diagrams returns 404 if HTML file does not exist."""
+        with patch('os.path.exists', return_value=False):
+            response = client.get("/diagrams")
+            assert response.status_code == 404
+
+    def test_get_mermaid_png_path_cached(self):
+        """get_mermaid_png_path returns cached file if exists."""
+        from backend.main import get_mermaid_png_path
+        def exists_side_effect(path):
+            if str(path).endswith('.png'):
+                return True
+            return False
+        with patch('os.path.exists', side_effect=exists_side_effect):
+            res = get_mermaid_png_path("sys_arch")
+            assert res.endswith(".png")
+
+    def test_get_mermaid_png_path_fetch_success(self):
+        """get_mermaid_png_path fetches from mermaid.ink if not cached."""
+        from backend.main import get_mermaid_png_path
+        from unittest.mock import mock_open
+        def exists_side_effect(path):
+            if str(path).endswith('.png'):
+                return False
+            return True
+        mock_response = MagicMock()
+        mock_response.__enter__.return_value = mock_response
+        mock_response.read.return_value = b"png_data"
+        with patch('os.path.exists', side_effect=exists_side_effect), \
+             patch('urllib.request.urlopen', return_value=mock_response), \
+             patch('builtins.open', mock_open()), \
+             patch('os.makedirs'):
+            res = get_mermaid_png_path("sys_arch")
+            assert res.endswith(".png")
+
+    def test_get_mermaid_png_path_invalid_name(self):
+        """get_mermaid_png_path raises ValueError for unknown diagram name."""
+        from backend.main import get_mermaid_png_path
+        with pytest.raises(ValueError):
+            get_mermaid_png_path("invalid_diagram_name")
+
+    def test_websocket_realtime_predict_no_data(self):
+        """Websocket endpoint returns error if dataset doesn't exist."""
+        with patch('os.path.exists', return_value=False):
+            with client.websocket_connect("/ws/realtime-predict") as websocket:
+                data = websocket.receive_json()
+                assert "error" in data
+                assert "dataset not found" in data.get("error", "").lower()
+
+    def test_websocket_realtime_predict_success(self):
+        """Websocket endpoint streams predictions accurately."""
+        import pandas as pd
+        mock_sup_df = pd.DataFrame({
+            'CustomerID': ['123', '456'],
+            'Target': [1, 0],
+            'Recency': [10.0, 20.0],
+            'Frequency': [5.0, 10.0],
+            'Monetary': [200.0, 500.0],
+            'AvgOrderValue': [40.0, 50.0],
+            'UniqueProducts': [3.0, 4.0],
+            'ReturnRate': [0.0, 0.05],
+            'CustomerLifetimeDays': [100.0, 150.0],
+            'PurchaseFrequencyMonthly': [1.5, 2.0],
+            'AvgQuantityPerOrder': [10.0, 12.0],
+            'Recency_log': [1.0, 2.0],
+            'Frequency_log': [1.0, 2.0],
+            'Monetary_log': [1.0, 2.0],
+        })
+        
+        mock_train_split = (None, mock_sup_df, None, mock_sup_df['Target'].values)
+        
+        with patch('os.path.exists', return_value=True), \
+             patch('pandas.read_csv', return_value=mock_sup_df), \
+             patch('backend.main.train_test_split', return_value=mock_train_split), \
+             patch('asyncio.sleep', return_value=None):
+            with client.websocket_connect("/ws/realtime-predict") as websocket:
+                # First row
+                data1 = websocket.receive_json()
+                assert "customer_id" in data1
+                assert data1["customer_id"] == "123"
+                assert "running_accuracy" in data1
+                
+                # Second row
+                data2 = websocket.receive_json()
+                assert data2["customer_id"] == "456"
+
+    def test_chat_endpoint_with_api_key(self):
+        """Chat endpoint should call Groq API when API key is present."""
+        import json
+        mock_response = MagicMock()
+        mock_response.__enter__.return_value = mock_response
+        mock_response.read.return_value = json.dumps({
+            "choices": [{
+                "message": {
+                    "content": "This is a mock reply from Groq AI"
+                }
+            }]
+        }).encode("utf-8")
+        
+        with patch.dict(os.environ, {"GROQ_API_KEY": "mock_groq_key"}), \
+             patch('urllib.request.urlopen', return_value=mock_response):
+            payload = {
+                "message": "Specify Champions segment size?",
+                "history": [{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hi"}]
+            }
+            response = client.post("/api/chat", json=payload)
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert data["reply"] == "This is a mock reply from Groq AI"
+
+    def test_chat_endpoint_api_key_failure(self):
+        """Chat endpoint handles urllib failures correctly."""
+        with patch.dict(os.environ, {"GROQ_API_KEY": "mock_groq_key"}), \
+             patch('urllib.request.urlopen', side_effect=Exception("API Error")):
+            payload = {
+                "message": "Specify Champions segment size?",
+                "history": []
+            }
+            response = client.post("/api/chat", json=payload)
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is False
+            assert "Failed to get response" in data["error"]
+
+
+class TestRetrainingPipeline:
+    """Test suite for physical/simulated execute_pipeline_retraining execution."""
+
+    def test_execute_pipeline_retraining_success(self):
+        """execute_pipeline_retraining runs all phases and updates status on success."""
+        from backend.main import execute_pipeline_retraining, retraining_status
+        
+        with patch('backend.pipeline.preprocessing.run_preprocessing'), \
+             patch('backend.pipeline.rfm_features.run_rfm_engineering'), \
+             patch('backend.pipeline.segmentation.run_segmentation'), \
+             patch('backend.pipeline.model_training.run_model_training'), \
+             patch('backend.pipeline.drift_detection.run_drift_detection'), \
+             patch('backend.main.load_models_and_scaler'), \
+             patch('backend.main.precompute_cached_data'):
+            execute_pipeline_retraining()
+            assert retraining_status["status"] == "success"
+            assert retraining_status["progress"] == 100
+            assert retraining_status["error"] is None
+
+    def test_execute_pipeline_retraining_failure(self):
+        """execute_pipeline_retraining updates status to failed when an exception occurs."""
+        from backend.main import execute_pipeline_retraining, retraining_status
+        
+        with patch('backend.pipeline.preprocessing.run_preprocessing', side_effect=Exception("Preprocessing failed")):
+            execute_pipeline_retraining()
+            assert retraining_status["status"] == "failed"
+            assert "Preprocessing failed" in retraining_status["error"]
 
 
 if __name__ == "__main__":

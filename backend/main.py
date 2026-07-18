@@ -526,6 +526,8 @@ async def predict_batch(file: UploadFile = File(...)):
             headers={"Content-Disposition": f"attachment; filename=predictions_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"}
         )
         
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Batch prediction processing failed: {str(e)}")
 

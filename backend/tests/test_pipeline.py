@@ -74,6 +74,43 @@ class TestPreprocessing:
             )
             assert 'C002' not in result['InvoiceNo'].values
 
+    def test_preprocessing_file_not_found(self):
+        """Preprocessing should raise FileNotFoundError if raw path doesn't exist."""
+        from backend.pipeline.preprocessing import run_preprocessing
+        with patch('os.path.exists', return_value=False):
+            with pytest.raises(FileNotFoundError):
+                run_preprocessing(raw_path='nonexistent.xlsx')
+
+    def test_preprocessing_cache_error(self):
+        """Preprocessing should handle caching exceptions gracefully."""
+        from backend.pipeline.preprocessing import run_preprocessing
+        test_data = pd.DataFrame({
+            'CustomerID': [1.0],
+            'InvoiceNo': ['A001'],
+            'Quantity': [5],
+            'UnitPrice': [2.0],
+            'InvoiceDate': pd.date_range('2024-01-01', periods=1),
+            'Country': ['United Kingdom'],
+            'Description': ['Item A'],
+            'StockCode': ['S001']
+        })
+        def to_csv_side_effect(path, *args, **kwargs):
+            if 'raw' in str(path) or 'subset' in str(path):
+                raise Exception("Cache Write Error")
+            return None
+
+        with patch('os.path.exists', return_value=True), \
+             patch('pandas.read_excel', return_value=test_data), \
+             patch('pandas.DataFrame.to_csv', side_effect=to_csv_side_effect), \
+             patch('os.makedirs'):
+            # The function should log a warning but still finish successfully
+            result = run_preprocessing(
+                raw_path='mock.xlsx',
+                output_path='mock_output.csv',
+                filter_uk_only=True
+            )
+            assert len(result) == 1
+
 
 class TestRFMFeatures:
     """Test suite for RFM feature engineering."""
@@ -168,6 +205,49 @@ class TestRFMFeatures:
             assert 'Frequency_log' in result.columns
             assert 'Monetary_log' in result.columns
 
+    def test_rfm_cleaned_file_not_found(self):
+        from backend.pipeline.rfm_features import run_rfm_engineering
+        with patch('os.path.exists', return_value=False):
+            with pytest.raises(FileNotFoundError):
+                run_rfm_engineering(cleaned_path='nonexistent.csv')
+
+    def test_rfm_raw_file_not_found(self):
+        from backend.pipeline.rfm_features import run_rfm_engineering
+        def exists_side_effect(path):
+            if 'cleaned' in str(path):
+                return True
+            return False
+        with patch('os.path.exists', side_effect=exists_side_effect):
+            with pytest.raises(FileNotFoundError):
+                run_rfm_engineering(cleaned_path='cleaned.csv', raw_path='nonexistent.xlsx')
+
+    def test_rfm_loads_cached_raw_subset(self):
+        from backend.pipeline.rfm_features import run_rfm_engineering
+        cleaned = self._make_cleaned_data()
+        raw = self._make_raw_data()
+        
+        def exists_side_effect(path):
+            return True
+            
+        with patch('os.path.exists', side_effect=exists_side_effect), \
+             patch('pandas.read_csv', side_effect=[cleaned, raw]), \
+             patch('joblib.dump'), \
+             patch('pandas.DataFrame.to_csv'), \
+             patch('matplotlib.pyplot.figure'), \
+             patch('matplotlib.pyplot.savefig'), \
+             patch('matplotlib.pyplot.close'), \
+             patch('matplotlib.pyplot.tight_layout'), \
+             patch('seaborn.heatmap'), \
+             patch('os.makedirs'):
+            result = run_rfm_engineering(
+                cleaned_path='mock_clean.csv',
+                raw_path='mock_raw.xlsx',
+                output_path='mock_rfm.csv',
+                scaler_path='mock_scaler.pkl',
+                correlation_plot_path='mock_corr.png'
+            )
+            assert 'Recency' in result.columns
+
 
 class TestSegmentation:
     """Test suite for customer segmentation."""
@@ -220,6 +300,13 @@ class TestSegmentation:
             for segment in expected_segments:
                 assert segment in result['Segment'].unique()
 
+    def test_segmentation_file_not_found(self):
+        """Segmentation should raise FileNotFoundError if features_path doesn't exist."""
+        from backend.pipeline.segmentation import run_segmentation
+        with patch('os.path.exists', return_value=False):
+            with pytest.raises(FileNotFoundError):
+                run_segmentation(features_path='nonexistent.csv')
+
 
 class TestModelTraining:
     """Test suite for model training pipeline."""
@@ -268,6 +355,72 @@ class TestModelTraining:
             assert 'baseline_majority' in metrics
             assert mock_dump.called
 
+    def test_build_supervised_dataset(self):
+        """Test build_supervised_dataset feature-target period split logic."""
+        from backend.pipeline.model_training import build_supervised_dataset
+        import pandas as pd
+        import numpy as np
+
+        # Create mock cleaned dataframe
+        dates = pd.date_range(start='2010-12-01', periods=20, freq='30D') # spans ~600 days (more than 9 + 3 months)
+        mock_cleaned = pd.DataFrame({
+            'CustomerID': ['12345'] * 20,
+            'InvoiceNo': [str(1000 + i) for i in range(20)],
+            'InvoiceDate': dates,
+            'TotalPrice': [100.0] * 20,
+            'Quantity': [10] * 20,
+            'StockCode': ['AAA'] * 20,
+            'Description': ['Prod A'] * 20
+        })
+
+        mock_raw = pd.DataFrame({
+            'CustomerID': [12345.0] * 20,
+            'InvoiceNo': [str(1000 + i) for i in range(20)],
+            'InvoiceDate': dates
+        })
+
+        with patch('pandas.read_csv', return_value=mock_cleaned), \
+             patch('os.path.exists', return_value=True), \
+             patch('pandas.read_excel', return_value=mock_raw):
+            df = build_supervised_dataset(
+                cleaned_path='mock_clean.csv',
+                raw_path='mock_raw.xlsx'
+            )
+            assert 'Target' in df
+            assert df.shape[0] > 0
+
+    def test_build_supervised_dataset_no_cache(self):
+        """Test build_supervised_dataset logic when cached_raw_path doesn't exist."""
+        from backend.pipeline.model_training import build_supervised_dataset
+        import pandas as pd
+        import numpy as np
+
+        dates = pd.date_range(start='2010-12-01', periods=20, freq='30D')
+        mock_cleaned = pd.DataFrame({
+            'CustomerID': ['12345'] * 20,
+            'InvoiceNo': [str(1000 + i) for i in range(20)],
+            'InvoiceDate': dates,
+            'TotalPrice': [100.0] * 20,
+            'Quantity': [10] * 20,
+            'StockCode': ['AAA'] * 20,
+            'Description': ['Prod A'] * 20
+        })
+
+        mock_raw = pd.DataFrame({
+            'CustomerID': [12345.0] * 20,
+            'InvoiceNo': [str(1000 + i) for i in range(20)],
+            'InvoiceDate': dates
+        })
+
+        with patch('pandas.read_csv', return_value=mock_cleaned), \
+             patch('os.path.exists', return_value=False), \
+             patch('pandas.read_excel', return_value=mock_raw):
+            df = build_supervised_dataset(
+                cleaned_path='mock_clean.csv',
+                raw_path='mock_raw.xlsx'
+            )
+            assert 'Target' in df
+
 
 class TestDriftDetection:
     """Test suite for drift detection."""
@@ -290,10 +443,73 @@ class TestDriftDetection:
     def test_psi_status_thresholds(self):
         """PSI status should correctly categorize drift levels."""
         from backend.pipeline.drift_detection import get_psi_status
-
+ 
         assert get_psi_status(0.05) == "Stable"
         assert get_psi_status(0.15) == "Monitor"
         assert get_psi_status(0.30) == "Retrain Alert"
+
+    def test_run_drift_detection(self):
+        """test pipeline function for drift detection."""
+        from backend.pipeline.drift_detection import run_drift_detection
+        import pandas as pd
+        import numpy as np
+        
+        mock_df = pd.DataFrame({
+            'Recency': np.random.randint(1, 365, 100),
+            'Frequency': np.random.randint(1, 50, 100),
+            'Monetary': np.random.rand(100) * 1000,
+            'AvgOrderValue': np.random.rand(100) * 100,
+            'UniqueProducts': np.random.randint(1, 20, 100),
+            'ReturnRate': np.random.rand(100) * 0.3,
+            'CustomerLifetimeDays': np.random.randint(30, 365, 100),
+            'PurchaseFrequencyMonthly': np.random.rand(100) * 10,
+            'AvgQuantityPerOrder': np.random.rand(100) * 20,
+        })
+        
+        with patch('pandas.read_csv', return_value=mock_df), \
+             patch('os.path.exists', return_value=True), \
+             patch('backend.pipeline.drift_detection.init_db'), \
+             patch('backend.pipeline.drift_detection.SessionLocal'), \
+             patch('builtins.open', MagicMock()), \
+             patch('json.dump'), \
+             patch('os.makedirs'):
+            report = run_drift_detection(reference_path='mock_rfm.csv', db_path='mock_db.db', simulate_drift=True)
+            assert 'overall_status' in report
+            assert len(report['metrics']) > 0
+
+    def test_log_drift_to_db(self):
+        from backend.pipeline.drift_detection import log_drift_to_db
+        mock_db_session = MagicMock()
+        with patch('backend.pipeline.drift_detection.init_db'), \
+             patch('backend.pipeline.drift_detection.SessionLocal', return_value=mock_db_session):
+            drift_results = [{
+                'feature': 'Recency',
+                'psi_value': 0.05,
+                'status': 'Stable',
+                'training_mean': 30.0,
+                'production_mean': 31.0
+            }]
+            log_drift_to_db('mock_db.db', drift_results)
+            assert mock_db_session.add.called
+            assert mock_db_session.commit.called
+            assert mock_db_session.close.called
+
+    def test_log_drift_to_db_exception(self):
+        from backend.pipeline.drift_detection import log_drift_to_db
+        mock_db_session = MagicMock()
+        mock_db_session.commit.side_effect = Exception("DB error")
+        with patch('backend.pipeline.drift_detection.init_db'), \
+             patch('backend.pipeline.drift_detection.SessionLocal', return_value=mock_db_session):
+            drift_results = [{
+                'feature': 'Recency',
+                'psi_value': 0.05,
+                'status': 'Stable',
+                'training_mean': 30.0,
+                'production_mean': 31.0
+            }]
+            log_drift_to_db('mock_db.db', drift_results)
+            assert mock_db_session.rollback.called
+            assert mock_db_session.close.called
 
 
 # Fixtures for common test data
