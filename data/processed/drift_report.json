@@ -1,0 +1,69 @@
+{
+    "timestamp": "2026-07-18T11:20:29.337200",
+    "overall_status": "Stable",
+    "metrics": [
+        {
+            "feature": "Recency",
+            "psi_value": 0.010577012463530312,
+            "status": "Stable",
+            "training_mean": 92.68887709052296,
+            "production_mean": 96.72308147188566
+        },
+        {
+            "feature": "Frequency",
+            "psi_value": 0.0036425187765438544,
+            "status": "Stable",
+            "training_mean": 3.9392089195646403,
+            "production_mean": 3.644090305444887
+        },
+        {
+            "feature": "Monetary",
+            "psi_value": 0.011232107741052004,
+            "status": "Stable",
+            "training_mean": 912.6406195911867,
+            "production_mean": 895.0082951218238
+        },
+        {
+            "feature": "AvgOrderValue",
+            "psi_value": 0.017063416764206408,
+            "status": "Stable",
+            "training_mean": 232.2775909888277,
+            "production_mean": 248.53482558623134
+        },
+        {
+            "feature": "UniqueProducts",
+            "psi_value": 0.012284352728553867,
+            "status": "Stable",
+            "training_mean": 58.67427661268914,
+            "production_mean": 56.25099601593625
+        },
+        {
+            "feature": "ReturnRate",
+            "psi_value": 0.010312507675445925,
+            "status": "Stable",
+            "training_mean": 0.10356025959016936,
+            "production_mean": 0.11024153313668594
+        },
+        {
+            "feature": "CustomerLifetimeDays",
+            "psi_value": 0.010109348397301834,
+            "status": "Stable",
+            "training_mean": 127.95619856649854,
+            "production_mean": 123.29747675962815
+        },
+        {
+            "feature": "PurchaseFrequencyMonthly",
+            "psi_value": 0.015123386776760058,
+            "status": "Stable",
+            "training_mean": 0.8774731303468879,
+            "production_mean": 0.8408904225033245
+        },
+        {
+            "feature": "AvgQuantityPerOrder",
+            "psi_value": 0.0037358681190373675,
+            "status": "Stable",
+            "training_mean": 136.87681323701145,
+            "production_mean": 139.9078502003852
+        }
+    ]
+}
