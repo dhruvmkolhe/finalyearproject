@@ -70,7 +70,7 @@ PredictIQ is an end-to-end machine learning platform that combines:
 ```bash
 # 1. Clone the repository
 git clone https://github.com/dhruvmkolhe/finalyearproject.git
-cd predictiq
+cd finalyearproject
 
 # 2. Configure environment
 cp .env.example .env
