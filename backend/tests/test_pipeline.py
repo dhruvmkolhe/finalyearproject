@@ -204,7 +204,6 @@ class TestSegmentation:
              patch('backend.pipeline.segmentation.plt', mock_plt), \
              patch('backend.pipeline.segmentation.sns', MagicMock()), \
              patch('scipy.cluster.hierarchy.dendrogram'), \
-             patch('scipy.cluster.hierarchy.linkage', return_value=np.zeros((99, 4))), \
              patch('os.makedirs'):
             result = run_segmentation(
                 features_path='mock_rfm.csv',
