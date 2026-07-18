@@ -2,17 +2,64 @@
 Comprehensive API test suite for PredictIQ backend endpoints.
 """
 import pytest
+import numpy as np
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 import sys
 import os
 
-# Add parent directory to path
+# Prevent sklearn/joblib from reading Linux cgroup files on Windows.
+os.environ.setdefault('OMP_NUM_THREADS', '1')
+os.environ.setdefault('LOKY_MAX_CPU_COUNT', '1')
+
+# Ensure project root AND backend dir are on the path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from main import app
+import backend.main as main_module
+from backend.main import app
 
 client = TestClient(app)
+
+
+# ---------------------------------------------------------------------------
+# Helper: inject fake scaler + models into backend.main globals so that
+# prediction endpoints return 200 (not 503 "models not loaded").
+# ---------------------------------------------------------------------------
+def _mock_scaler():
+    s = MagicMock()
+    s.transform.return_value = np.zeros((1, 9))
+    return s
+
+
+def _mock_model():
+    m = MagicMock()
+    m.predict.return_value = np.array([1])
+    m.predict_proba.return_value = np.array([[0.3, 0.7]])
+    return m
+
+
+@pytest.fixture(autouse=False)
+def inject_models():
+    """Inject mock scaler and models into backend.main module globals."""
+    original_scaler = main_module.scaler
+    original_models = main_module.models.copy()
+
+    main_module.scaler = _mock_scaler()
+    main_module.models = {
+        'logistic_regression': _mock_model(),
+        'random_forest': _mock_model(),
+        'xgboost': _mock_model(),
+        'lightgbm': _mock_model(),
+        'stacking_ensemble': _mock_model(),
+    }
+    # Disable xgb_shap_explainer to avoid SHAP calculation errors in mock
+    main_module.xgb_shap_explainer = None
+
+    yield
+
+    main_module.scaler = original_scaler
+    main_module.models = original_models
 
 
 class TestHealthEndpoint:
@@ -137,7 +184,12 @@ class TestModelsEndpoint:
 
 class TestPredictionEndpoint:
     """Test suite for single prediction endpoint."""
-    
+
+    @pytest.fixture(autouse=True)
+    def setup_models(self, inject_models):
+        """Auto-use inject_models for every test in this class."""
+        pass
+
     def test_predict_single_with_valid_input(self):
         """Single prediction should work with valid customer features."""
         payload = {
@@ -151,15 +203,15 @@ class TestPredictionEndpoint:
             "PurchaseFrequencyMonthly": 2.5,
             "AvgQuantityPerOrder": 10.0
         }
-        
+
         response = client.post("/api/predict/single", json=payload)
         assert response.status_code == 200
-        
+
         data = response.json()
-        if data["success"]:
-            assert "predictions" in data["data"]
-            assert "assigned_segment" in data["data"]
-    
+        assert data["success"] is True
+        assert "predictions" in data["data"]
+        assert "assigned_segment" in data["data"]
+
     def test_predict_single_with_missing_fields(self):
         """Single prediction should fail with missing required fields."""
         payload = {
@@ -167,10 +219,10 @@ class TestPredictionEndpoint:
             "Frequency": 5.0
             # Missing required fields
         }
-        
+
         response = client.post("/api/predict/single", json=payload)
-        assert response.status_code == 422  # Validation error
-    
+        assert response.status_code == 422  # Pydantic validation error
+
     def test_predict_single_with_invalid_types(self):
         """Single prediction should fail with invalid data types."""
         payload = {
@@ -184,7 +236,7 @@ class TestPredictionEndpoint:
             "PurchaseFrequencyMonthly": 2.5,
             "AvgQuantityPerOrder": 10.0
         }
-        
+
         response = client.post("/api/predict/single", json=payload)
         assert response.status_code == 422
 
@@ -287,17 +339,22 @@ class TestPerformance:
 # Integration Tests
 class TestIntegration:
     """Integration tests for end-to-end workflows."""
-    
+
+    @pytest.fixture(autouse=True)
+    def setup_models(self, inject_models):
+        """Auto-use inject_models for every test in this class."""
+        pass
+
     def test_full_prediction_workflow(self):
         """Test complete prediction workflow from input to output."""
         # 1. Check system health
         health = client.get("/api/health")
         assert health.status_code == 200
-        
+
         # 2. Get model metrics
         metrics = client.get("/api/models/metrics")
         assert metrics.status_code == 200
-        
+
         # 3. Make a prediction
         payload = {
             "Recency": 15.0,
@@ -310,10 +367,10 @@ class TestIntegration:
             "PurchaseFrequencyMonthly": 3.0,
             "AvgQuantityPerOrder": 12.0
         }
-        
+
         prediction = client.post("/api/predict/single", json=payload)
         assert prediction.status_code == 200
-        
+
         # 4. Check prediction history
         history = client.get("/api/predict/history")
         assert history.status_code == 200
@@ -321,3 +378,4 @@ class TestIntegration:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
+
