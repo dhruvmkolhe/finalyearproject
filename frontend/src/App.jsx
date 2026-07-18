@@ -13,7 +13,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [systemStatus, setSystemStatus] = useState('degraded');
-  const [apiBaseUrl] = useState('http://localhost:8000');
+  const [apiBaseUrl] = useState(import.meta.env.VITE_API_URL || 'http://localhost:8000');
 
   useEffect(() => {
     const checkHealth = async () => {
