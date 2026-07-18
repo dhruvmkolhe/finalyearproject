@@ -1,7 +1,7 @@
 # PredictIQ - Enterprise Customer Segmentation & Purchase Prediction Platform
 
-[![CI/CD Pipeline](https://github.com/yourusername/predictiq/workflows/PredictIQ%20CI/CD%20Pipeline/badge.svg)](https://github.com/yourusername/predictiq/actions)
-[![codecov](https://codecov.io/gh/yourusername/predictiq/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/predictiq)
+[![CI/CD Pipeline](https://github.com/dhruvmkolhe/finalyearproject/workflows/PredictIQ%20CI/CD%20Pipeline/badge.svg)](https://github.com/dhruvmkolhe/finalyearproject/actions)
+[![codecov](https://codecov.io/gh/dhruvmkolhe/finalyearproject/branch/main/graph/badge.svg)](https://codecov.io/gh/dhruvmkolhe/finalyearproject)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](https://www.docker.com/)
@@ -9,7 +9,7 @@
 > **Production-ready ML system for real-time customer behavior prediction with
 > automated drift detection and MLOps capabilities.**
 
-![PredictIQ Dashboard](figures/1)End-to-End%20System%20Architecture%20Blueprint-Illustrates%20the%20integration%20between%20the%20React%20client,%20FastAPI%20application%20server,%20ML%20processing%20pipeline,%20and%20SQLite%20database%20storage.png)
+![PredictIQ Dashboard](figures/system_architecture.png)
 
 ---
 
@@ -69,7 +69,7 @@ PredictIQ is an end-to-end machine learning platform that combines:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/predictiq.git
+git clone https://github.com/dhruvmkolhe/finalyearproject.git
 cd predictiq
 
 # 2. Configure environment
@@ -374,7 +374,8 @@ for details.
 ## 📞 Support
 
 - **Documentation**: [docs.predictiq.com](https://docs.predictiq.com)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/predictiq/issues)
+- **Issues**:
+  [GitHub Issues](https://github.com/dhruvmkolhe/finalyearproject/issues)
 - **Email**: support@predictiq.com
 
 ---
