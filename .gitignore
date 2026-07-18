@@ -70,9 +70,9 @@ dist/
 database.db
 backups/
 
-# Machine Learning Models
-models/*.pkl
-models/*.joblib
+# Machine Learning Models (Unignored so Render has ready-to-use models)
+# models/*.pkl
+# models/*.joblib
 !models/.gitkeep
 
 # Data (sensitive)
@@ -80,7 +80,7 @@ models/*.joblib
 /*.csv
 data/raw/*.xlsx
 data/raw/*.csv
-data/processed/*.csv
+# data/processed/*.csv
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
