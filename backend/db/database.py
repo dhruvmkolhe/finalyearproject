@@ -3,15 +3,24 @@ import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Database file path
-DB_PATH = os.path.join(os.getcwd(), "backend", "database.db")
-DATABASE_URL = f"sqlite:///{DB_PATH}"
+# Database connection setting (Loads environment variable DATABASE_URL if available)
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if DATABASE_URL:
+    # SQLAlchemy requires postgresql:// instead of postgres://
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+else:
+    DB_PATH = os.path.join(os.getcwd(), "backend", "database.db")
+    DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 # Setup SQLAlchemy engine and SessionLocal
-engine = create_engine(
-    DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        DATABASE_URL, 
+        connect_args={"check_same_thread": False}
+    )
+else:
+    engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Declarative Base
