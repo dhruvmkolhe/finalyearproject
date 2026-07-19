@@ -219,7 +219,7 @@ def load_models_and_scaler():
     """
     Loads all pre-trained classifiers, scaler, and calculates K-Means centroids.
     """
-    global scaler, models, xgb_shap_explainer, db_centroids, model_metrics
+    global scaler, xgb_shap_explainer, db_centroids, model_metrics
     models_dir = os.path.join(os.getcwd(), "models")
     
     try:
@@ -1228,7 +1228,6 @@ def trigger_drift_check(background_tasks: BackgroundTasks, current_user: User = 
         
         if has_high_drift or (report and report.get("overall_status") == "Retrain Alert"):
             logger.info("MLOps: Drift detected exceeding 0.25 threshold. Initiating auto-retraining loop in background...")
-            global retraining_status
             if retraining_status["status"] != "running":
                 background_tasks.add_task(execute_pipeline_retraining)
                 auto_retrain_triggered = True
@@ -1259,7 +1258,6 @@ retraining_status = {
 }
 
 def execute_pipeline_retraining():
-    global retraining_status
     retraining_status["status"] = "running"
     retraining_status["progress"] = 5
     retraining_status["error"] = None
@@ -1466,7 +1464,6 @@ def trigger_pipeline_retrain(background_tasks: BackgroundTasks, current_user: Us
     """
     Triggers the full 5-phase data science pipeline in the background and reloads models.
     """
-    global retraining_status
     if retraining_status["status"] == "running":
         return {
             "success": False,
