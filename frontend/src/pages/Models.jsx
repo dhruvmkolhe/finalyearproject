@@ -170,28 +170,29 @@ const Models = ({ apiBaseUrl, setActiveModalImage }) => {
                       {name.replace('_', ' ')} {isRecommended && <span className="text-secondary text-[10px] lowercase font-medium ml-1.5">(recommended)</span>}
                     </td>
                     <td className={`py-3.5 text-center font-semibold ${m.accuracy === bestMetrics.accuracy ? 'text-success font-bold' : ''}`}>
-                      {(m.accuracy * 100).toFixed(2)}%
+                      {m.accuracy != null ? (m.accuracy * 100).toFixed(2) : 'N/A'}%
                     </td>
                     <td className={`py-3.5 text-center font-semibold ${m.precision === bestMetrics.precision ? 'text-success font-bold' : ''}`}>
-                      {(m.precision * 100).toFixed(2)}%
+                      {m.precision != null ? (m.precision * 100).toFixed(2) : 'N/A'}%
                     </td>
                     <td className={`py-3.5 text-center font-semibold ${m.recall === bestMetrics.recall ? 'text-success font-bold' : ''}`}>
-                      {(m.recall * 100).toFixed(2)}%
+                      {m.recall != null ? (m.recall * 100).toFixed(2) : 'N/A'}%
                     </td>
                     <td className={`py-3.5 text-center font-semibold ${m.f1_score === bestMetrics.f1_score ? 'text-success font-bold' : ''}`}>
-                      {(m.f1_score * 100).toFixed(2)}%
+                      {m.f1_score != null ? (m.f1_score * 100).toFixed(2) : 'N/A'}%
                     </td>
                      <td className={`py-3.5 text-center font-semibold font-mono ${m.roc_auc === bestMetrics.roc_auc ? 'text-success font-bold' : ''}`}>
-                      {m.roc_auc.toFixed(4)}
+                      {m.roc_auc != null ? m.roc_auc.toFixed(4) : 'N/A'}
                     </td>
                     <td className={`py-3.5 text-center font-semibold font-mono ${m.pr_auc === bestMetrics.pr_auc ? 'text-success font-bold' : ''}`}>
-                      {m.pr_auc.toFixed(4)}
+                      {m.pr_auc != null ? m.pr_auc.toFixed(4) : 'N/A'}
                     </td>
                     <td className={`py-3.5 text-center font-semibold font-mono ${m.mcc === bestMetrics.mcc ? 'text-success font-bold' : ''}`}>
                       {m.mcc != null ? m.mcc.toFixed(4) : 'N/A'}
                     </td>
                     <td className="py-3.5 text-center font-semibold font-mono text-textMuted pr-2">
-                      {m.cv_roc_auc_mean.toFixed(4)} <span className="text-[10px]">± {m.cv_roc_auc_std.toFixed(3)}</span>
+                      {m.cv_roc_auc_mean != null ? m.cv_roc_auc_mean.toFixed(4) : 'N/A'}{' '}
+                      {m.cv_roc_auc_std != null ? `± ${m.cv_roc_auc_std.toFixed(3)}` : ''}
                     </td>
                   </tr>
                 );
