@@ -6,11 +6,17 @@ const Models = ({ apiBaseUrl, setActiveModalImage }) => {
   const [data, setData] = useState(null);
   const [activeConfusionModel, setActiveConfusionModel] = useState('stacking_ensemble');
   const [error, setError] = useState(null);
+  const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
 
   const fetchData = async (force = false) => {
     try {
       setLoading(true);
       setError(null);
+      
+      if (force) {
+        sessionStorage.removeItem('predictiq_models');
+        setRefreshTimestamp(Date.now());
+      }
       
       if (!force) {
         const cachedModels = sessionStorage.getItem('predictiq_models');
@@ -210,11 +216,11 @@ const Models = ({ apiBaseUrl, setActiveModalImage }) => {
           <p className="text-textMuted text-xs mt-1">Visualizes sensitivity trade-offs across all classification thresholds.</p>
           <div className="flex justify-center p-4 min-h-[300px] mt-4 rounded-xl border border-white/5 bg-white/[0.01]">
             <img 
-              src={`${apiBaseUrl}/api/charts/roc?t=${new Date().getTime()}`} 
+              src={`${apiBaseUrl}/api/charts/roc?t=${refreshTimestamp}`} 
               alt="ROC Curve overlay" 
               className="max-h-[350px] object-contain rounded-lg cursor-pointer hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
               onClick={() => setActiveModalImage({
-                src: `${apiBaseUrl}/api/charts/roc?t=${new Date().getTime()}`,
+                src: `${apiBaseUrl}/api/charts/roc?t=${refreshTimestamp}`,
                 label: "Receiver Operating Characteristic (ROC)",
                 description: "Visualizes sensitivity trade-offs across all classification thresholds."
               })}
@@ -228,11 +234,11 @@ const Models = ({ apiBaseUrl, setActiveModalImage }) => {
           <p className="text-textMuted text-xs mt-1">Key validator for evaluating models under class imbalance.</p>
           <div className="flex justify-center p-4 min-h-[300px] mt-4 rounded-xl border border-white/5 bg-white/[0.01]">
             <img 
-              src={`${apiBaseUrl}/api/charts/pr?t=${new Date().getTime()}`} 
+              src={`${apiBaseUrl}/api/charts/pr?t=${refreshTimestamp}`} 
               alt="Precision-Recall Curve overlay" 
               className="max-h-[350px] object-contain rounded-lg cursor-pointer hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
               onClick={() => setActiveModalImage({
-                src: `${apiBaseUrl}/api/charts/pr?t=${new Date().getTime()}`,
+                src: `${apiBaseUrl}/api/charts/pr?t=${refreshTimestamp}`,
                 label: "Precision-Recall Curve Overlay",
                 description: "Key validator for evaluating models under class imbalance."
               })}
@@ -263,11 +269,11 @@ const Models = ({ apiBaseUrl, setActiveModalImage }) => {
           
           <div className="flex-1 flex items-center justify-center p-4 min-h-[220px] mt-4 rounded-xl border border-white/5 bg-white/[0.01]">
             <img 
-              src={`${apiBaseUrl}/api/charts/${confusionMapping[activeConfusionModel]}?t=${new Date().getTime()}`} 
+              src={`${apiBaseUrl}/api/charts/${confusionMapping[activeConfusionModel]}?t=${refreshTimestamp}`} 
               alt={`${activeConfusionModel} confusion matrix`}
               className="max-h-[250px] object-contain rounded-lg cursor-pointer hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
               onClick={() => setActiveModalImage({
-                src: `${apiBaseUrl}/api/charts/${confusionMapping[activeConfusionModel]}?t=${new Date().getTime()}`,
+                src: `${apiBaseUrl}/api/charts/${confusionMapping[activeConfusionModel]}?t=${refreshTimestamp}`,
                 label: `${activeConfusionModel.replace('_', ' ').toUpperCase()} Confusion Matrix`,
                 description: "Actual vs predicted classification matrix."
               })}
@@ -283,11 +289,11 @@ const Models = ({ apiBaseUrl, setActiveModalImage }) => {
           </div>
           <div className="flex-1 flex items-center justify-center p-4 min-h-[220px] mt-4 rounded-xl border border-white/5 bg-white/[0.01]">
             <img 
-              src={`${apiBaseUrl}/api/charts/rf_importance?t=${new Date().getTime()}`} 
+              src={`${apiBaseUrl}/api/charts/rf_importance?t=${refreshTimestamp}`} 
               alt="Random forest feature importance"
               className="max-h-[250px] object-contain rounded-lg cursor-pointer hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
               onClick={() => setActiveModalImage({
-                src: `${apiBaseUrl}/api/charts/rf_importance?t=${new Date().getTime()}`,
+                src: `${apiBaseUrl}/api/charts/rf_importance?t=${refreshTimestamp}`,
                 label: "Random Forest Feature Importances",
                 description: "Relative feature contribution calculated from Gini impurity indices."
               })}
@@ -303,11 +309,11 @@ const Models = ({ apiBaseUrl, setActiveModalImage }) => {
           </div>
           <div className="flex-1 flex items-center justify-center p-4 min-h-[220px] mt-4 rounded-xl border border-white/5 bg-white/[0.01]">
             <img 
-              src={`${apiBaseUrl}/api/charts/shap_summary?t=${new Date().getTime()}`} 
+              src={`${apiBaseUrl}/api/charts/shap_summary?t=${refreshTimestamp}`} 
               alt="SHAP summary beeswarm plot"
               className="max-h-[250px] object-contain rounded-lg cursor-pointer hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
               onClick={() => setActiveModalImage({
-                src: `${apiBaseUrl}/api/charts/shap_summary?t=${new Date().getTime()}`,
+                src: `${apiBaseUrl}/api/charts/shap_summary?t=${refreshTimestamp}`,
                 label: "SHAP Beeswarm Explanations",
                 description: "Global feature impact distributions mapping XGBoost input correlations."
               })}

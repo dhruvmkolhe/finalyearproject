@@ -77,27 +77,27 @@ function App() {
           systemStatus={systemStatus} 
         />
         <main className="flex-1 p-6 overflow-y-auto">
-          <div className={currentPage === 'dashboard' ? '' : 'hidden'}>
-            <Home apiBaseUrl={apiBaseUrl} active={currentPage === 'dashboard'} />
-          </div>
-          <div className={currentPage === 'segments' ? '' : 'hidden'}>
+          {currentPage === 'dashboard' && (
+            <Home apiBaseUrl={apiBaseUrl} active={true} />
+          )}
+          {currentPage === 'segments' && (
             <Segments apiBaseUrl={apiBaseUrl} setActiveModalImage={setActiveModalImage} />
-          </div>
-          <div className={currentPage === 'models' ? '' : 'hidden'}>
+          )}
+          {currentPage === 'models' && (
             <Models apiBaseUrl={apiBaseUrl} setActiveModalImage={setActiveModalImage} />
-          </div>
-          <div className={currentPage === 'predict' ? '' : 'hidden'}>
+          )}
+          {currentPage === 'predict' && (
             <Predict apiBaseUrl={apiBaseUrl} />
-          </div>
-          <div className={currentPage === 'live' ? '' : 'hidden'}>
+          )}
+          {currentPage === 'live' && (
             <Live apiBaseUrl={apiBaseUrl} />
-          </div>
-          <div className={currentPage === 'drift' ? '' : 'hidden'}>
+          )}
+          {currentPage === 'drift' && (
             <Drift apiBaseUrl={apiBaseUrl} />
-          </div>
-          <div className={currentPage === 'chat' ? '' : 'hidden'}>
+          )}
+          {currentPage === 'chat' && (
             <Chat apiBaseUrl={apiBaseUrl} />
-          </div>
+          )}
         </main>
       </div>
 

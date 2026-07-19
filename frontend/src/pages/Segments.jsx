@@ -12,11 +12,18 @@ const Segments = ({ apiBaseUrl, setActiveModalImage }) => {
   const [customers, setCustomers] = useState([]);
   const [activeSegment, setActiveSegment] = useState('Champions');
   const [error, setError] = useState(null);
+  const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
 
   const fetchData = async (force = false) => {
     try {
       setLoading(true);
       setError(null);
+
+      if (force) {
+        sessionStorage.removeItem('predictiq_segments_overview');
+        sessionStorage.removeItem('predictiq_segments_customers');
+        setRefreshTimestamp(Date.now());
+      }
 
       if (!force) {
         const cachedOverview = sessionStorage.getItem('predictiq_segments_overview');
@@ -288,11 +295,11 @@ const Segments = ({ apiBaseUrl, setActiveModalImage }) => {
           </div>
           <div className="flex-1 flex items-center justify-center p-4 min-h-[300px] mt-4 rounded-xl border border-white/5 bg-white/[0.01]">
             <img 
-              src={`${apiBaseUrl}/api/charts/pca?t=${new Date().getTime()}`} 
+              src={`${apiBaseUrl}/api/charts/pca?t=${refreshTimestamp}`} 
               alt="Customer Segment PCA" 
               className="max-h-[350px] object-contain rounded-lg shadow-2xl cursor-pointer hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
               onClick={() => setActiveModalImage({
-                src: `${apiBaseUrl}/api/charts/pca?t=${new Date().getTime()}`,
+                src: `${apiBaseUrl}/api/charts/pca?t=${refreshTimestamp}`,
                 label: "2D PCA Cluster Representation",
                 description: "Dimensionality reduction mapping 9D feature profiles to 2D space."
               })}
