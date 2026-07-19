@@ -293,7 +293,7 @@ const Live = ({ apiBaseUrl }) => {
                 <div key={seg} className="space-y-0.5">
                   <div className="flex justify-between text-[10px]">
                     <span className="font-semibold text-textMuted">{seg}</span>
-                    <span className="font-bold text-white">{count} ({pct.toFixed(0)}%)</span>
+                    <span className="font-bold text-white">{count} ({(pct ?? 0).toFixed(0)}%)</span>
                   </div>
                   <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
                     <div 
@@ -346,7 +346,7 @@ const Live = ({ apiBaseUrl }) => {
 
                     {/* Inputs */}
                     <span className="text-textMuted">
-                      (R:{row.features.Recency}d | F:{row.features.Frequency}x | M:£{row.features.Monetary.toFixed(0)})
+                      (R:{row?.features?.Recency}d | F:{row?.features?.Frequency}x | M:£{(row?.features?.Monetary ?? 0).toFixed(0)})
                     </span>
                   </div>
 
@@ -360,7 +360,7 @@ const Live = ({ apiBaseUrl }) => {
                         ? 'bg-success/10 text-success border border-success/20' 
                         : 'bg-danger/10 text-danger border border-danger/20'
                     }`}>
-                      Pred: {buyLabel} ({(row.probability * 100).toFixed(0)}%)
+                      Pred: {buyLabel} ({((row?.probability ?? 0) * 100).toFixed(0)}%)
                     </span>
 
                     {/* correctness check */}

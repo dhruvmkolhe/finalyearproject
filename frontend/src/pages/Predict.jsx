@@ -689,7 +689,7 @@ const Predict = ({ apiBaseUrl }) => {
                               <div className="flex justify-between text-xs">
                                 <span className="uppercase font-semibold text-textPrimary">{model.replace('_', ' ')}</span>
                                 <span className={`font-bold ${willBuy ? 'text-success' : 'text-danger'}`}>
-                                  {willBuy ? 'Will Repurchase' : 'Will Churn'} ({percentage.toFixed(0)}%)
+                                  {willBuy ? 'Will Repurchase' : 'Will Churn'} ({percentage ? percentage.toFixed(0) : '0'}%)
                                 </span>
                               </div>
                               <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
@@ -727,7 +727,7 @@ const Predict = ({ apiBaseUrl }) => {
                             <div key={idx} className="p-3 rounded-xl border border-white/5 bg-white/[0.01] space-y-1">
                               <span className="block text-[10px] font-bold text-textMuted uppercase tracking-wider truncate">{sf.feature.replace('_log', '')}</span>
                               <span className={`text-sm font-extrabold block ${isPos ? 'text-success' : 'text-danger'}`}>
-                                {isPos ? '+' : ''}{sf.shap_value.toFixed(2)}
+                                {isPos ? '+' : ''}{(sf?.shap_value ?? 0).toFixed(2)}
                               </span>
                               <span className="text-[9px] text-textMuted font-medium block">
                                 {isPos ? 'Push to Repurchase' : 'Push to Churn'}
@@ -747,7 +747,7 @@ const Predict = ({ apiBaseUrl }) => {
                                 <div key={feat} className="flex justify-between items-center text-xs py-1 border-b border-white/5 last:border-b-0">
                                   <span className="text-textMuted font-semibold font-mono">{feat.replace('_log', '')}</span>
                                   <span className={`font-mono font-bold ${isPos ? 'text-success' : 'text-danger'}`}>
-                                    {isPos ? '+' : ''}{parseFloat(val).toFixed(4)}
+                                    {isPos ? '+' : ''}{(parseFloat(val) || 0).toFixed(4)}
                                   </span>
                                 </div>
                               );
@@ -925,9 +925,9 @@ const Predict = ({ apiBaseUrl }) => {
                             <td className="py-3 font-semibold text-textMuted">#{indexOfFirstItem + idx + 1}</td>
                             <td className="py-3">{item.Recency}d</td>
                             <td className="py-3">{item.Frequency}x</td>
-                            <td className="py-3">£{parseFloat(item.Monetary).toFixed(0)}</td>
-                            <td className="py-3">£{parseFloat(item.AvgOrderValue).toFixed(0)}</td>
-                            <td className="py-3">{(parseFloat(item.ReturnRate) * 100).toFixed(0)}%</td>
+                            <td className="py-3">£{(parseFloat(item.Monetary) || 0).toFixed(0)}</td>
+                            <td className="py-3">£{(parseFloat(item.AvgOrderValue) || 0).toFixed(0)}</td>
+                            <td className="py-3">{((parseFloat(item.ReturnRate) || 0) * 100).toFixed(0)}%</td>
                             <td className="py-3">
                               <span className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold ${segmentBadges[item.Predicted_Segment] || 'bg-white/5 text-white'}`}>
                                 {item.Predicted_Segment}
@@ -939,7 +939,7 @@ const Predict = ({ apiBaseUrl }) => {
                               </span>
                             </td>
                             <td className="py-3 text-right font-mono font-bold text-secondary">
-                              {(parseFloat(item.Purchase_Probability) * 100).toFixed(1)}%
+                              {((parseFloat(item.Purchase_Probability) || 0) * 100).toFixed(1)}%
                             </td>
                           </tr>
                         );
@@ -1163,7 +1163,7 @@ const Predict = ({ apiBaseUrl }) => {
                           <td className="py-3 px-4 font-semibold">{row.customer_id}</td>
                           <td className="py-3 px-4 text-right text-textMuted">{row.recency}d</td>
                           <td className="py-3 px-4 text-right text-textMuted">{row.frequency}</td>
-                          <td className="py-3 px-4 text-right font-medium text-secondary">${parseFloat(row.monetary).toFixed(2)}</td>
+                          <td className="py-3 px-4 text-right font-medium text-secondary">${(parseFloat(row.monetary) || 0).toFixed(2)}</td>
                           <td className="py-3 px-4">
                             <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold ${segmentBadges[row.predicted_segment] || 'bg-white/5 text-white'}`}>
                               {row.predicted_segment}
@@ -1317,7 +1317,7 @@ const Predict = ({ apiBaseUrl }) => {
                           <Tooltip
                             contentStyle={{ backgroundColor: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
                             labelStyle={{ color: '#F1F5F9' }}
-                            formatter={(value) => [`${value >= 0 ? '+' : ''}${(value * 100).toFixed(2)}%`, 'Repurchase Likelihood Impact']}
+                            formatter={(value) => [`${value >= 0 ? '+' : ''}${((value || 0) * 100).toFixed(2)}%`, 'Repurchase Likelihood Impact']}
                           />
                           <ReferenceLine x={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
                           <Bar dataKey="value" strokeWidth={0} radius={[0, 4, 4, 0]}>
@@ -1351,7 +1351,7 @@ const Predict = ({ apiBaseUrl }) => {
                             />
                             <path
                               className={shapData.prediction >= 0.5 ? "text-success" : "text-danger"}
-                              strokeDasharray={`${(shapData.prediction * 100).toFixed(0)}, 100`}
+                              strokeDasharray={`${((shapData?.prediction ?? 0) * 100).toFixed(0)}, 100`}
                               strokeWidth="2.5"
                               strokeLinecap="round"
                               stroke="currentColor"
@@ -1359,7 +1359,7 @@ const Predict = ({ apiBaseUrl }) => {
                               d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                             />
                           </svg>
-                          <span className="text-sm font-extrabold text-white">{(shapData.prediction * 100).toFixed(0)}%</span>
+                          <span className="text-sm font-extrabold text-white">{((shapData?.prediction ?? 0) * 100).toFixed(0)}%</span>
                         </div>
                         <div className="space-y-1">
                           <span className="text-xs text-textMuted font-semibold">Repurchase Probability</span>
@@ -1372,16 +1372,16 @@ const Predict = ({ apiBaseUrl }) => {
                       <div className="pt-2 border-t border-white/5 space-y-2 text-xs">
                         <div className="flex justify-between">
                           <span className="text-textMuted font-medium">Population Base Value:</span>
-                          <span className="text-white font-bold font-mono">{(shapData.base_value * 100).toFixed(1)}%</span>
+                          <span className="text-white font-bold font-mono">{((shapData?.base_value ?? 0) * 100).toFixed(1)}%</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-textMuted font-medium">Customer Prediction Value:</span>
-                          <span className="text-white font-bold font-mono">{(shapData.prediction * 100).toFixed(1)}%</span>
+                          <span className="text-white font-bold font-mono">{((shapData?.prediction ?? 0) * 100).toFixed(1)}%</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-textMuted font-medium">Behavioral Deviation:</span>
-                          <span className={`font-bold font-mono ${shapData.prediction - shapData.base_value >= 0 ? 'text-success' : 'text-danger'}`}>
-                            {shapData.prediction - shapData.base_value >= 0 ? '+' : ''}{((shapData.prediction - shapData.base_value) * 100).toFixed(1)}%
+                          <span className={`font-bold font-mono ${((shapData?.prediction ?? 0) - (shapData?.base_value ?? 0)) >= 0 ? 'text-success' : 'text-danger'}`}>
+                            {((shapData?.prediction ?? 0) - (shapData?.base_value ?? 0)) >= 0 ? '+' : ''}{(((shapData?.prediction ?? 0) - (shapData?.base_value ?? 0)) * 100).toFixed(1)}%
                           </span>
                         </div>
                       </div>
@@ -1396,27 +1396,27 @@ const Predict = ({ apiBaseUrl }) => {
 
                       <div className="grid grid-cols-2 gap-3.5 text-xs text-textMuted">
                         <div className="p-2 rounded bg-white/[0.01] border border-white/5">
-                          <span className="block font-bold text-white text-sm">{shapData.features.Recency.toFixed(0)}d</span>
+                          <span className="block font-bold text-white text-sm">{(shapData?.features?.Recency ?? 0).toFixed(0)}d</span>
                           Recency
                         </div>
                         <div className="p-2 rounded bg-white/[0.01] border border-white/5">
-                          <span className="block font-bold text-white text-sm">{shapData.features.Frequency.toFixed(0)}x</span>
+                          <span className="block font-bold text-white text-sm">{(shapData?.features?.Frequency ?? 0).toFixed(0)}x</span>
                           Frequency
                         </div>
                         <div className="p-2 rounded bg-white/[0.01] border border-white/5">
-                          <span className="block font-bold text-white text-sm">£{shapData.features.Monetary.toFixed(0)}</span>
+                          <span className="block font-bold text-white text-sm">£{(shapData?.features?.Monetary ?? 0).toFixed(0)}</span>
                           Monetary Spend
                         </div>
                         <div className="p-2 rounded bg-white/[0.01] border border-white/5">
-                          <span className="block font-bold text-white text-sm">£{shapData.features.AvgOrderValue.toFixed(0)}</span>
+                          <span className="block font-bold text-white text-sm">£{(shapData?.features?.AvgOrderValue ?? 0).toFixed(0)}</span>
                           Avg Order Value
                         </div>
                         <div className="p-2 rounded bg-white/[0.01] border border-white/5">
-                          <span className="block font-bold text-white text-sm">{(shapData.features.ReturnRate * 100).toFixed(0)}%</span>
+                          <span className="block font-bold text-white text-sm">{((shapData?.features?.ReturnRate ?? 0) * 100).toFixed(0)}%</span>
                           Return Rate
                         </div>
                         <div className="p-2 rounded bg-white/[0.01] border border-white/5">
-                          <span className="block font-bold text-white text-sm">{shapData.features.CustomerLifetimeDays.toFixed(0)}d</span>
+                          <span className="block font-bold text-white text-sm">{(shapData?.features?.CustomerLifetimeDays ?? 0).toFixed(0)}d</span>
                           Lifetime
                         </div>
                       </div>

@@ -255,21 +255,21 @@ const Segments = ({ apiBaseUrl, setActiveModalImage }) => {
               </div>
               <div className="mt-4">
                 <h4 className="text-3xl font-extrabold text-white tracking-tight">{item.count}</h4>
-                <p className="text-textMuted text-xs mt-0.5">{item.percentage.toFixed(1)}% of userbase</p>
+                <p className="text-textMuted text-xs mt-0.5">{(item.percentage ?? 0).toFixed(1)}% of userbase</p>
               </div>
               
               {/* Avg values indicator */}
               <div className="mt-4 pt-3 border-t border-white/5 grid grid-cols-3 text-[10px] text-textMuted gap-1 text-center">
                 <div>
-                  <span className="block font-bold text-white">{centroid?.Recency.toFixed(0)}d</span>
+                  <span className="block font-bold text-white">{(centroid?.Recency ?? 0).toFixed(0)}d</span>
                   Recency
                 </div>
                 <div>
-                  <span className="block font-bold text-white">{centroid?.Frequency.toFixed(1)}x</span>
+                  <span className="block font-bold text-white">{(centroid?.Frequency ?? 0).toFixed(1)}x</span>
                   Freq
                 </div>
                 <div>
-                  <span className="block font-bold text-white">£{centroid?.Monetary.toFixed(0)}</span>
+                  <span className="block font-bold text-white">£{(centroid?.Monetary ?? 0).toFixed(0)}</span>
                   Monetary
                 </div>
               </div>
@@ -338,15 +338,15 @@ const Segments = ({ apiBaseUrl, setActiveModalImage }) => {
             {/* In-depth centroids profile */}
             <div className="grid grid-cols-3 gap-4">
               <div className="p-3 rounded-xl border border-white/5 bg-white/[0.01] text-center">
-                <span className="block text-lg font-bold text-white">{activeOverview?.Recency.toFixed(1)}d</span>
+                <span className="block text-lg font-bold text-white">{(activeOverview?.Recency ?? 0).toFixed(1)}d</span>
                 <span className="text-[10px] text-textMuted uppercase tracking-wider font-semibold">Avg Recency</span>
               </div>
               <div className="p-3 rounded-xl border border-white/5 bg-white/[0.01] text-center">
-                <span className="block text-lg font-bold text-white">{activeOverview?.Frequency.toFixed(1)} orders</span>
+                <span className="block text-lg font-bold text-white">{(activeOverview?.Frequency ?? 0).toFixed(1)} orders</span>
                 <span className="text-[10px] text-textMuted uppercase tracking-wider font-semibold">Avg Frequency</span>
               </div>
               <div className="p-3 rounded-xl border border-white/5 bg-white/[0.01] text-center">
-                <span className="block text-lg font-bold text-white">£{activeOverview?.Monetary.toFixed(2)}</span>
+                <span className="block text-lg font-bold text-white">£{(activeOverview?.Monetary ?? 0).toFixed(2)}</span>
                 <span className="text-[10px] text-textMuted uppercase tracking-wider font-semibold">Avg Monetary</span>
               </div>
             </div>

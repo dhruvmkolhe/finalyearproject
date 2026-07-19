@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // Animated Counter Component
-const AnimatedCounter = ({ value, duration = 1, formatter = (val) => val.toFixed(0) }) => {
+const AnimatedCounter = ({ value, duration = 1, formatter = (val) => (val ?? 0).toFixed(0) }) => {
   const [displayVal, setDisplayVal] = useState(0);
 
   useEffect(() => {
@@ -274,7 +274,7 @@ const Home = ({ apiBaseUrl, active }) => {
             <div>
               <p className="text-xs font-semibold text-textMuted uppercase tracking-wider">Avg Customer Spend</p>
               <h3 className="text-3xl font-bold text-white mt-2 tracking-tight">
-                £<AnimatedCounter value={912.64} formatter={(v) => v.toFixed(2)} />
+                £<AnimatedCounter value={912.64} formatter={(v) => (v ?? 0).toFixed(2)} />
               </h3>
             </div>
             <div className="p-3 rounded-xl bg-secondary/10 border border-secondary/20 text-secondary">
@@ -298,7 +298,7 @@ const Home = ({ apiBaseUrl, active }) => {
             <div>
               <p className="text-xs font-semibold text-textMuted uppercase tracking-wider">30-Day Churn Risk</p>
               <h3 className="text-3xl font-bold text-white mt-2 tracking-tight">
-                <AnimatedCounter value={churnRiskPct} formatter={(v) => v.toFixed(1)} />%
+                <AnimatedCounter value={churnRiskPct} formatter={(v) => (v ?? 0).toFixed(1)} />%
               </h3>
             </div>
             <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 text-warning">
@@ -321,7 +321,7 @@ const Home = ({ apiBaseUrl, active }) => {
             <div>
               <p className="text-xs font-semibold text-textMuted uppercase tracking-wider">Best Classifier ROC-AUC</p>
               <h3 className="text-3xl font-bold text-white mt-2 tracking-tight font-mono">
-                <AnimatedCounter value={bestAuc} formatter={(v) => v.toFixed(3)} />
+                <AnimatedCounter value={bestAuc} formatter={(v) => (v ?? 0).toFixed(3)} />
               </h3>
             </div>
             <div className="p-3 rounded-xl bg-success/10 border border-success/20 text-success">
@@ -404,7 +404,7 @@ const Home = ({ apiBaseUrl, active }) => {
               <div key={item.segment} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-white/5 bg-white/[0.01]">
                 <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx] }} />
                 <span className="text-textMuted truncate font-medium">{item.segment}</span>
-                <span className="text-white font-bold ml-auto">{item.percentage.toFixed(0)}%</span>
+                <span className="text-white font-bold ml-auto">{(item.percentage ?? 0).toFixed(0)}%</span>
               </div>
             ))}
           </div>
@@ -482,7 +482,7 @@ const Home = ({ apiBaseUrl, active }) => {
                         <td className="py-3">
                           <span className="font-semibold text-white">R:{row.recency}</span> | 
                           <span className="font-semibold text-white"> F:{row.frequency}</span> | 
-                          <span className="font-semibold text-white"> M:£{row.monetary.toFixed(0)}</span>
+                          <span className="font-semibold text-white"> M:£{(row.monetary ?? 0).toFixed(0)}</span>
                         </td>
                         <td className="py-3">
                           <span className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold ${segColors[row.predicted_segment] || 'bg-white/5 border-white/10 text-white'}`}>
@@ -495,7 +495,7 @@ const Home = ({ apiBaseUrl, active }) => {
                           </span>
                         </td>
                         <td className="py-3 text-right font-mono font-bold text-secondary">
-                          {(row.stacking_prob * 100).toFixed(1)}%
+                          {((row.stacking_prob ?? 0) * 100).toFixed(1)}%
                         </td>
                       </tr>
                     );
