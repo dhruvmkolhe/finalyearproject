@@ -22,7 +22,7 @@ lightgbm==4.5.0
 imbalanced-learn==0.12.4
 
 # Explainability
-shap==0.46.0
+shap==0.52.0
 
 # Visualization
 matplotlib==3.9.2
