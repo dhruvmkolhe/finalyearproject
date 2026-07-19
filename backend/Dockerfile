@@ -1,5 +1,5 @@
 # Multi-stage build for optimized production image
-FROM python:3.11-slim as builder
+FROM python:3.12-slim as builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Production stage
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
