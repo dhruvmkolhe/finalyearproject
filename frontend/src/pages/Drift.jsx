@@ -250,66 +250,6 @@ const Drift = ({ apiBaseUrl }) => {
         </div>
       </div>
 
-      {/* Retraining Console Card */}
-      <div className="glass-panel p-6 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-start gap-4">
-          <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary/20 shrink-0 flex items-center justify-center text-secondary">
-            <RefreshCw className={`w-8 h-8 ${retrainState.status === 'running' ? 'animate-spin' : ''}`} />
-          </div>
-          <div className="space-y-1 flex-1">
-            <span className="text-xs font-bold text-textMuted uppercase tracking-wider">Automated MLOps Retraining Console</span>
-            <h3 className="text-lg font-bold text-white tracking-tight">
-              {retrainState.status === 'running' 
-                ? `Retraining pipeline in progress... (${retrainState.progress}%)` 
-                : retrainState.status === 'success'
-                ? 'Retraining Pipeline Completed'
-                : retrainState.status === 'failed'
-                ? 'Retraining Pipeline Failed'
-                : 'Trigger Full Model Retraining (Option 1)'}
-            </h3>
-            <p className="text-xs text-textMuted max-w-xl leading-relaxed">
-              {retrainState.status === 'running' 
-                ? 'Executing dataset reconstruction, re-segmentation, and RandomizedSearchCV hyperparameter search in background. Reloads models dynamically upon completion.'
-                : retrainState.status === 'success'
-                ? `Pipeline successfully completed at ${formatTimestamp(retrainState.finished_at)}. Models reloaded dynamically in RAM.`
-                : retrainState.status === 'failed'
-                ? `Error during execution: ${retrainState.error || 'Unknown error'}`
-                : 'Cleans transaction logs, calculates 9D RFM metrics, recalculates K-Means clusters, retrains Stacking Ensemble and base classifiers, and updates drift baselines.'}
-            </p>
-            
-            {/* Progress bar */}
-            {retrainState.status === 'running' && (
-              <div className="mt-3 w-full sm:max-w-md space-y-1">
-                <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full rounded-full bg-secondary transition-all duration-500"
-                    style={{ width: `${retrainState.progress}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-[9px] font-bold text-textMuted uppercase">
-                  <span>Start</span>
-                  <span>Progress: {retrainState.progress}%</span>
-                  <span>Generalizing</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <button
-          onClick={triggerRetrain}
-          disabled={retrainState.status === 'running'}
-          className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-secondary hover:bg-secondary/80 disabled:opacity-50 transition-all shadow-lg shadow-secondary/15 shrink-0 self-start md:self-auto"
-        >
-          {retrainState.status === 'running' ? (
-            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Play className="w-3.5 h-3.5 fill-white" />
-          )}
-          {retrainState.status === 'running' ? 'Retraining...' : 'Run Pipeline Retrain'}
-        </button>
-      </div>
-
       {/* PSI Gauges Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {metrics.map((item) => {
