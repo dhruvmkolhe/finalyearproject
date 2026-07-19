@@ -1,5 +1,14 @@
 import sys
 import os
+import tempfile
+
+# Force a writable headless Matplotlib setup before importing packages like SHAP
+os.environ["MPLCONFIGDIR"] = os.path.join(tempfile.gettempdir(), "matplotlib")
+try:
+    import matplotlib
+    matplotlib.use("Agg")
+except Exception:
+    pass
 
 # Insert parent directory of 'backend' to sys.path to allow running as main:app inside target folder
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -378,17 +387,36 @@ def precompute_cached_data():
             "monthly_trend": trend_data
         }
 
+async def async_startup_tasks():
+    try:
+        # Run database initialization
+        logger.info("Starting database initialization in background...")
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, init_db)
+        
+        # Load models and scaler
+        logger.info("Loading ML models and scaler in background...")
+        await loop.run_in_executor(None, load_models_and_scaler)
+        
+        # Precompute cached dashboard metrics
+        logger.info("Pre-calculating dataset and segment caches in background...")
+        await loop.run_in_executor(None, precompute_cached_data)
+        
+        # Pre-cache diagrams
+        logger.info("Pre-caching structural system architecture diagrams...")
+        for name in DIAGRAMS_CODE.keys():
+            try:
+                await loop.run_in_executor(None, get_mermaid_png_path, name)
+            except Exception as e:
+                logger.error(f"Startup pre-cache failed for {name}: {e}")
+        logger.info("Full background system initialization completed.")
+    except Exception as e:
+        logger.critical(f"Critical failure in background startup task: {str(e)}", exc_info=True)
+
 @app.on_event("startup")
 async def startup_event():
-    init_db()
-    load_models_and_scaler()
-    precompute_cached_data()
-    # Pre-cache Mermaid diagrams as PNGs
-    for name in DIAGRAMS_CODE.keys():
-        try:
-            get_mermaid_png_path(name)
-        except Exception as e:
-            logger.error(f"Startup pre-cache failed for {name}: {e}")
+    # Trigger background initialization immediately so Uvicorn can bind to port
+    asyncio.create_task(async_startup_tasks())
 
 # ----------------- REST ENDPOINTS -----------------
 
