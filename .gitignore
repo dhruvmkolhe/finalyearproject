@@ -76,7 +76,7 @@ backups/
 !models/.gitkeep
 
 # Data (sensitive)
-/*.xlsx
+*.xlsx
 /*.csv
 data/raw/*.xlsx
 data/raw/*.csv

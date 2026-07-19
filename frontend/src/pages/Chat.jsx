@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const Chat = ({ apiBaseUrl }) => {
   const [messages, setMessages] = useState([
@@ -118,6 +119,18 @@ const Chat = ({ apiBaseUrl }) => {
       : <pre className="bg-black/30 border border-white/10 p-3 rounded-lg overflow-x-auto my-3 text-xs font-mono text-slate-200 whitespace-pre-wrap"><code>{children}</code></pre>,
     hr: () => <hr className="border-white/10 my-3" />,
     blockquote: ({ children }) => <blockquote className="border-l-2 border-cyan-500/50 pl-3 my-2 text-slate-400 italic">{children}</blockquote>,
+    table: ({ children }) => (
+      <div className="overflow-x-auto my-4 rounded-xl border border-white/10 bg-white/[0.02]">
+        <table className="min-w-full divide-y divide-white/10 text-xs text-left text-slate-300">
+          {children}
+        </table>
+      </div>
+    ),
+    thead: ({ children }) => <thead className="bg-white/5 text-white font-bold">{children}</thead>,
+    tbody: ({ children }) => <tbody className="divide-y divide-white/5">{children}</tbody>,
+    tr: ({ children }) => <tr className="hover:bg-white/[0.01] transition-colors">{children}</tr>,
+    th: ({ children }) => <th className="px-4 py-2.5 font-semibold text-slate-200">{children}</th>,
+    td: ({ children }) => <td className="px-4 py-2.5 text-slate-300">{children}</td>,
   };
 
   return (
@@ -179,7 +192,7 @@ const Chat = ({ apiBaseUrl }) => {
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 ) : (
                   <div className="space-y-1 text-slate-200 prose-invert">
-                    <ReactMarkdown components={markdownComponents}>{msg.content}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
                   </div>
                 )}
               </div>

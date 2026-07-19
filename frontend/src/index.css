@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -7,9 +7,9 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Inter', sans-serif;
-  background-color: #0A0F1E;
-  color: #F1F5F9;
+  font-family: "Inter", sans-serif;
+  background-color: #0a0f1e;
+  color: #f1f5f9;
   overflow-x: hidden;
   min-height: 100vh;
 }
@@ -35,13 +35,13 @@ body {
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, #F1F5F9 0%, #94A3B8 100%);
+  background: linear-gradient(135deg, #f1f5f9 0%, #94a3b8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .accent-gradient {
-  background: linear-gradient(135deg, #6366F1 0%, #22D3EE 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%);
 }
 
 .accent-gradient-hover {
@@ -70,4 +70,33 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
+}
+
+/* Custom animation keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-zoom-in {
+  animation: zoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

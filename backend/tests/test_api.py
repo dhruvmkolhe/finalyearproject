@@ -309,7 +309,7 @@ class TestChatEndpoint:
     
     async def test_chat_endpoint_without_api_key(self):
         """Chat endpoint should handle missing API key gracefully."""
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"DATABASE_URL": os.environ.get("DATABASE_URL", ""), "TESTING": "1"}, clear=True):
             payload = {
                 "message": "What is the dataset size?",
                 "history": []
@@ -321,7 +321,7 @@ class TestChatEndpoint:
             
             # Should return error about missing API key
             if not data["success"]:
-                assert "GROQ_API_KEY" in data["error"]
+                assert "OPENROUTER_API_KEY" in data["error"]
 
 
 # Performance and Load Tests
@@ -556,20 +556,9 @@ class TestExtraEndpointsSuccess:
                 assert data2["customer_id"] == "456"
 
     def test_chat_endpoint_with_api_key(self):
-        """Chat endpoint should call Groq API when API key is present."""
-        import json
-        mock_response = MagicMock()
-        mock_response.__enter__.return_value = mock_response
-        mock_response.read.return_value = json.dumps({
-            "choices": [{
-                "message": {
-                    "content": "This is a mock reply from Groq AI"
-                }
-            }]
-        }).encode("utf-8")
-        
-        with patch.dict(os.environ, {"GROQ_API_KEY": "mock_groq_key"}), \
-             patch('urllib.request.urlopen', return_value=mock_response):
+        """Chat endpoint should call OpenRouter API when API key is present."""
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "mock_openrouter_key"}), \
+             patch('langchain.agents.AgentExecutor.invoke', return_value={"output": "This is a mock reply from OpenRouter AI"}):
             payload = {
                 "message": "Specify Champions segment size?",
                 "history": [{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hi"}]
@@ -578,12 +567,12 @@ class TestExtraEndpointsSuccess:
             assert response.status_code == 200
             data = response.json()
             assert data["success"] is True
-            assert data["reply"] == "This is a mock reply from Groq AI"
+            assert data["reply"] == "This is a mock reply from OpenRouter AI"
 
     def test_chat_endpoint_api_key_failure(self):
         """Chat endpoint handles urllib failures correctly."""
-        with patch.dict(os.environ, {"GROQ_API_KEY": "mock_groq_key"}), \
-             patch('urllib.request.urlopen', side_effect=Exception("API Error")):
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "mock_openrouter_key"}), \
+             patch('langchain.agents.AgentExecutor.invoke', side_effect=Exception("API Error")):
             payload = {
                 "message": "Specify Champions segment size?",
                 "history": []
@@ -592,7 +581,7 @@ class TestExtraEndpointsSuccess:
             assert response.status_code == 200
             data = response.json()
             assert data["success"] is False
-            assert "Failed to get response" in data["error"]
+            assert "Agentic Chatbot execution failed" in data["error"]
 
 
 class TestRetrainingPipeline:
@@ -622,6 +611,185 @@ class TestRetrainingPipeline:
             execute_pipeline_retraining()
             assert retraining_status["status"] == "failed"
             assert "Preprocessing failed" in retraining_status["error"]
+
+
+class TestDatasetUpload:
+    """Test suite for dataset upload/ingestion endpoint."""
+    
+    def test_upload_dataset_missing_columns(self):
+        """Upload endpoint should return 400 Bad Request if required columns are missing."""
+        # Create CSV with missing columns
+        csv_data = "bad_col,another_col\n1,2"
+        files = {"file": ("test.csv", csv_data, "text/csv")}
+        response = client.post("/api/dataset/upload", files=files)
+        assert response.status_code == 400
+        assert "Missing required columns" in response.json()["detail"]
+
+    def test_upload_dataset_success(self):
+        """Upload endpoint should return 200 on valid CSV format."""
+        import pandas as pd
+        csv_data = (
+            "CustomerID,InvoiceNo,Quantity,UnitPrice,InvoiceDate,StockCode,Description,Country\n"
+            "12345,555555,10,2.5,2026-07-19 12:00:00,85123A,Test Product,United Kingdom"
+        )
+        files = {"file": ("test.csv", csv_data, "text/csv")}
+        
+        # Capture original read_csv
+        original_read_csv = pd.read_csv
+        
+        def mock_read_csv(filepath_or_buffer, *args, **kwargs):
+            if isinstance(filepath_or_buffer, str) and "cleaned_retail.csv" in filepath_or_buffer:
+                return pd.DataFrame(columns=['InvoiceNo', 'StockCode', 'Description', 'Quantity', 'InvoiceDate', 'UnitPrice', 'CustomerID', 'Country', 'TotalPrice'])
+            elif isinstance(filepath_or_buffer, str) and "raw_subset.csv" in filepath_or_buffer:
+                return pd.DataFrame(columns=['CustomerID', 'InvoiceNo', 'InvoiceDate'])
+            return original_read_csv(filepath_or_buffer, *args, **kwargs)
+        
+        # Mock dependencies
+        with patch('os.path.exists', return_value=True), \
+             patch('pandas.read_csv', side_effect=mock_read_csv), \
+             patch('pandas.DataFrame.to_csv'), \
+             patch('backend.main.bg_process_excel_append_and_retrain') as mock_bg_task:
+            response = client.post("/api/dataset/upload", files=files)
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert data["rows_ingested"] == 1
+            assert "Successfully ingested" in data["message"]
+
+
+class TestPredictionHistory:
+    """Test suite for prediction history logs tracking and retrieval."""
+
+    def test_get_all_prediction_history_success(self):
+        """all history endpoint should return paginated list of logged predictions."""
+        # Create a mock database session
+        mock_log = MagicMock()
+        mock_log.id = 42
+        mock_log.timestamp = "2026-07-19 12:00:00"
+        mock_log.customer_id = "12345"
+        mock_log.recency = 30
+        mock_log.frequency = 5
+        mock_log.monetary = 250.0
+        mock_log.avg_order_value = 50.0
+        mock_log.unique_products = 5
+        mock_log.return_rate = 0.0
+        mock_log.customer_lifetime_days = 90
+        mock_log.purchase_frequency_monthly = 1.0
+        mock_log.avg_quantity_per_order = 10.0
+        mock_log.predicted_segment = "Champions"
+        mock_log.stacking_pred = 1
+        mock_log.stacking_prob = 0.85
+        
+        mock_query = MagicMock()
+        mock_query.count.return_value = 1
+        mock_query.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [mock_log]
+        
+        mock_db = MagicMock()
+        mock_db.query.return_value = mock_query
+
+        with patch('backend.main.SessionLocal', return_value=mock_db):
+            response = client.get("/api/predict/history/all")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert len(data["data"]["records"]) == 1
+            assert data["data"]["records"][0]["customer_id"] == "12345"
+            assert data["data"]["records"][0]["predicted_segment"] == "Champions"
+
+    def test_export_prediction_history_success(self):
+        """export history endpoint should format logs into downloadable CSV."""
+        mock_log = MagicMock()
+        mock_log.id = 42
+        mock_log.timestamp = "2026-07-19 12:00:00"
+        mock_log.customer_id = "12345"
+        mock_log.recency = 30
+        mock_log.frequency = 5
+        mock_log.monetary = 250.0
+        mock_log.avg_order_value = 50.0
+        mock_log.unique_products = 5
+        mock_log.return_rate = 0.0
+        mock_log.customer_lifetime_days = 90
+        mock_log.purchase_frequency_monthly = 1.0
+        mock_log.avg_quantity_per_order = 10.0
+        mock_log.predicted_segment = "Champions"
+        mock_log.stacking_pred = 1
+        mock_log.stacking_prob = 0.85
+        
+        mock_query = MagicMock()
+        mock_query.order_by.return_value.all.return_value = [mock_log]
+        
+        mock_db = MagicMock()
+        mock_db.query.return_value = mock_query
+
+        with patch('backend.main.SessionLocal', return_value=mock_db):
+            response = client.get("/api/predict/history/export")
+            assert response.status_code == 200
+            assert "text/csv" in response.headers["content-type"]
+            assert "attachment; filename=" in response.headers["content-disposition"]
+            csv_content = response.text
+            assert "Inference_ID" in csv_content
+            assert "CustomerID" in csv_content
+            assert "12345" in csv_content
+
+    def test_get_customer_shap_endpoint_success(self):
+        """get_customer_shap endpoint should return SHAP details for a valid customer."""
+        mock_log = MagicMock()
+        mock_log.customer_id = "12345"
+        mock_log.recency = 30
+        mock_log.frequency = 5
+        mock_log.monetary = 250.0
+        mock_log.avg_order_value = 50.0
+        mock_log.unique_products = 5
+        mock_log.return_rate = 0.0
+        mock_log.customer_lifetime_days = 90
+        mock_log.purchase_frequency_monthly = 1.0
+        mock_log.avg_quantity_per_order = 10.0
+        mock_log.predicted_segment = "Champions"
+        
+        mock_query = MagicMock()
+        mock_query.filter.return_value.order_by.return_value.first.return_value = mock_log
+        
+        mock_db = MagicMock()
+        mock_db.query.return_value = mock_query
+
+        # Mock SHAP explainer returning custom shap values
+        mock_shap_values = MagicMock()
+        mock_shap_values.shape = (1, 9)
+        mock_shap_values.values = np.array([[0.1, -0.05, 0.2, 0.01, 0.0, -0.02, 0.05, 0.08, -0.01]])
+        mock_shap_values.base_values = np.array([0.58])
+        
+        mock_explainer = MagicMock(return_value=mock_shap_values)
+
+        original_scaler = main_module.scaler
+        original_models = main_module.models.copy()
+        original_explainer = main_module.xgb_shap_explainer
+
+        # Setup mocks in main module
+        main_module.scaler = _mock_scaler()
+        main_module.models = {
+            'logistic_regression': _mock_model(),
+            'random_forest': _mock_model(),
+            'xgboost': _mock_model(),
+            'lightgbm': _mock_model(),
+            'stacking_ensemble': _mock_model(),
+        }
+        main_module.xgb_shap_explainer = mock_explainer
+
+        try:
+            with patch('backend.main.SessionLocal', return_value=mock_db):
+                response = client.get("/api/predict/shap/12345")
+                assert response.status_code == 200
+                data = response.json()
+                assert data["success"] is True
+                assert data["data"]["base_value"] == 0.58
+                assert data["data"]["prediction"] == 0.7 # since our mocked xgb predict_proba returns 0.7 for class 1
+                assert "contributions" in data["data"]
+                assert data["data"]["contributions"]["Recency"] == 0.1
+                assert data["data"]["contributions"]["Monetary"] == 0.2
+        finally:
+            main_module.scaler = original_scaler
+            main_module.models = original_models
+            main_module.xgb_shap_explainer = original_explainer
 
 
 if __name__ == "__main__":

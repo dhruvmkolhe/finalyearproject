@@ -3,46 +3,67 @@ import { motion } from 'framer-motion';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { 
   Users, TrendingUp, AlertTriangle, Trash2, 
-  HelpCircle, BarChart3, Image as ImageIcon, Sparkles
+  HelpCircle, BarChart3, Image as ImageIcon, Sparkles, RefreshCw
 } from 'lucide-react';
 
-const Segments = ({ apiBaseUrl }) => {
+const Segments = ({ apiBaseUrl, setActiveModalImage }) => {
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [activeSegment, setActiveSegment] = useState('Champions');
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Fetch segment overview
-        const ovRes = await fetch(`${apiBaseUrl}/api/segments/overview`);
-        const ovData = await ovRes.json();
-        
-        // Fetch raw customer list for histogram calculations
-        const custRes = await fetch(`${apiBaseUrl}/api/segments/customers`);
-        const custData = await custRes.json();
-        
-        if (ovData.success && custData.success) {
-          setOverview(ovData.data);
-          setCustomers(custData.data);
+  const fetchData = async (force = false) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (!force) {
+        const cachedOverview = sessionStorage.getItem('predictiq_segments_overview');
+        const cachedCustomers = sessionStorage.getItem('predictiq_segments_customers');
+        if (cachedOverview && cachedCustomers) {
+          const overviewData = JSON.parse(cachedOverview);
+          setOverview(overviewData);
+          setCustomers(JSON.parse(cachedCustomers));
           
-          // Select default active segment (usually the first one, or Champions)
-          const firstSeg = ovData.data.distribution[0]?.segment || 'Champions';
+          const firstSeg = overviewData.distribution[0]?.segment || 'Champions';
           setActiveSegment(firstSeg);
-        } else {
-          setError("Failed to load customer segments details.");
+          setLoading(false);
+          return;
         }
-      } catch (err) {
-        console.error(err);
-        setError("Error connecting to segment APIs.");
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchData();
+      
+      // Fetch segment overview
+      const ovRes = await fetch(`${apiBaseUrl}/api/segments/overview`);
+      const ovData = await ovRes.json();
+      
+      // Fetch raw customer list for histogram calculations
+      const custRes = await fetch(`${apiBaseUrl}/api/segments/customers`);
+      const custData = await custRes.json();
+      
+      if (ovData.success && custData.success) {
+        setOverview(ovData.data);
+        setCustomers(custData.data);
+        
+        sessionStorage.setItem('predictiq_segments_overview', JSON.stringify(ovData.data));
+        sessionStorage.setItem('predictiq_segments_customers', JSON.stringify(custData.data));
+        
+        // Select default active segment (usually the first one, or Champions)
+        const firstSeg = ovData.data.distribution[0]?.segment || 'Champions';
+        setActiveSegment(firstSeg);
+      } else {
+        setError("Failed to load customer segments details.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Error connecting to segment APIs.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData(false);
   }, [apiBaseUrl]);
 
   // Client-side histogram calculator — uses quantile-based edges for skewed data
@@ -194,11 +215,21 @@ const Segments = ({ apiBaseUrl }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Customer Segmentation Explorer</h1>
-        <p className="text-textMuted text-sm mt-1">
-          Profiling segments generated via 9D K-Means clustering. Click cards below to drill down.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Customer Segmentation Explorer</h1>
+          <p className="text-textMuted text-sm mt-1">
+            Profiling segments generated via 9D K-Means clustering. Click cards below to drill down.
+          </p>
+        </div>
+        <button
+          onClick={() => fetchData(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-textMuted hover:text-white bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 transition-all duration-200 self-start sm:self-auto"
+          title="Force refresh segments stats cache"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Refresh Data</span>
+        </button>
       </div>
 
       {/* Segment Cards */}
@@ -259,7 +290,12 @@ const Segments = ({ apiBaseUrl }) => {
             <img 
               src={`${apiBaseUrl}/api/charts/pca?t=${new Date().getTime()}`} 
               alt="Customer Segment PCA" 
-              className="max-h-[350px] object-contain rounded-lg shadow-2xl"
+              className="max-h-[350px] object-contain rounded-lg shadow-2xl cursor-pointer hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
+              onClick={() => setActiveModalImage({
+                src: `${apiBaseUrl}/api/charts/pca?t=${new Date().getTime()}`,
+                label: "2D PCA Cluster Representation",
+                description: "Dimensionality reduction mapping 9D feature profiles to 2D space."
+              })}
               onError={(e) => {
                 e.target.style.display = 'none';
                 e.target.nextSibling.style.display = 'flex';

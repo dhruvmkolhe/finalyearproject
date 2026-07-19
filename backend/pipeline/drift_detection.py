@@ -1,7 +1,6 @@
 import os
 import json
 import logging
-import sqlite3
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -68,7 +67,7 @@ def get_psi_status(psi_value: float) -> str:
 
 def log_drift_to_db(db_path: str, drift_results: list):
     """
-    Saves the data drift results to the SQLite database using SQLAlchemy.
+    Saves the data drift results to the Supabase/PostgreSQL database using SQLAlchemy.
     """
     # Ensure tables exist
     init_db()
@@ -87,7 +86,7 @@ def log_drift_to_db(db_path: str, drift_results: list):
             )
             db.add(metric)
         db.commit()
-        logger.info(f"Successfully logged drift metrics to SQLite database using SQLAlchemy")
+        logger.info(f"Successfully logged drift metrics to Supabase/PostgreSQL database using SQLAlchemy")
     except Exception as e:
         logger.error(f"Failed logging drift metrics: {e}")
         db.rollback()
@@ -101,7 +100,7 @@ def run_drift_detection(
 ) -> dict:
     """
     Loads baseline RFM features, generates a simulated production batch, computes PSI,
-    logs results to SQLite, and returns a JSON-serializable drift report.
+    logs results to Supabase/PostgreSQL, and returns a JSON-serializable drift report.
     """
     logger.info("Starting Data Drift Detection pipeline.")
     
@@ -176,7 +175,7 @@ def run_drift_detection(
         "metrics": drift_results
     }
 
-    # Log to SQLite
+    # Log to Supabase/PostgreSQL
     log_drift_to_db(db_path, drift_results)
     
     # Save a JSON copy of the drift report in processed folder

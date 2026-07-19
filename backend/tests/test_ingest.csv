@@ -1,0 +1,2 @@
+CustomerID,InvoiceNo,Quantity,UnitPrice,InvoiceDate,StockCode,Description,Country
+19999,999999,5,1.25,2026-07-19 12:00:00,85123A,Web test product,United Kingdom

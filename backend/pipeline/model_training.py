@@ -104,6 +104,22 @@ def build_supervised_dataset(
         df_raw = pd.read_csv(cached_raw_path, usecols=['CustomerID', 'InvoiceNo', 'InvoiceDate'])
     else:
         logger.info("Cached raw subset not found. Reading from raw Excel (this will be slower)...")
+        if not os.path.exists(raw_path):
+            logger.info(f"Raw data file not found at: {raw_path}. Attempting to download from UCI Repository...")
+            import urllib.request
+            raw_dir = os.path.dirname(raw_path)
+            if raw_dir:
+                os.makedirs(raw_dir, exist_ok=True)
+            url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00352/Online%20Retail.xlsx"
+            try:
+                opener = urllib.request.build_opener()
+                opener.addheaders = [('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')]
+                urllib.request.install_opener(opener)
+                
+                urllib.request.urlretrieve(url, raw_path)
+                logger.info("Successfully downloaded Online Retail dataset from UCI.")
+            except Exception as download_err:
+                raise FileNotFoundError(f"Raw data file not found at {raw_path} and failed to download from UCI: {download_err}")
         df_raw = pd.read_excel(raw_path, usecols=['CustomerID', 'InvoiceNo', 'InvoiceDate'])
     df_raw = df_raw.dropna(subset=['CustomerID'])
     df_raw['CustomerID'] = df_raw['CustomerID'].astype(float).astype(int).astype(str) # Handle float float-like representations from CSV safely

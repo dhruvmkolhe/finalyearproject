@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, AlertTriangle, AlertCircle, RefreshCw, 
-  HelpCircle, Calendar, ArrowRightLeft, BookOpen, Play
+  Calendar, Play
 } from 'lucide-react';
 
 const Drift = ({ apiBaseUrl }) => {
@@ -46,6 +46,17 @@ const Drift = ({ apiBaseUrl }) => {
       }
     } catch (err) {
       console.error("Error fetching retrain status:", err);
+    }
+  };
+  const formatTimestamp = (isoString) => {
+    if (!isoString) return '';
+    try {
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return isoString;
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' + 
+             date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    } catch (e) {
+      return isoString;
     }
   };
 
@@ -260,7 +271,7 @@ const Drift = ({ apiBaseUrl }) => {
               {retrainState.status === 'running' 
                 ? 'Executing dataset reconstruction, re-segmentation, and RandomizedSearchCV hyperparameter search in background. Reloads models dynamically upon completion.'
                 : retrainState.status === 'success'
-                ? `Pipeline successfully completed at ${retrainState.finished_at ? retrainState.finished_at.substring(11, 19) : ''}. Models reloaded dynamically in RAM.`
+                ? `Pipeline successfully completed at ${formatTimestamp(retrainState.finished_at)}. Models reloaded dynamically in RAM.`
                 : retrainState.status === 'failed'
                 ? `Error during execution: ${retrainState.error || 'Unknown error'}`
                 : 'Cleans transaction logs, calculates 9D RFM metrics, recalculates K-Means clusters, retrains Stacking Ensemble and base classifiers, and updates drift baselines.'}
@@ -358,34 +369,7 @@ const Drift = ({ apiBaseUrl }) => {
         })}
       </div>
 
-      {/* Explanatory Article */}
-      <div className="glass-panel p-6 border border-white/10 space-y-4">
-        <div className="flex items-center gap-2 border-b border-white/5 pb-3">
-          <BookOpen className="w-5 h-5 text-secondary" />
-          <h3 className="text-base font-bold text-white">Understand Data Drift Monitor</h3>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-textMuted leading-relaxed">
-          <div className="space-y-2">
-            <h4 className="font-bold text-white flex items-center gap-1.5"><ArrowRightLeft className="w-3.5 h-3.5 text-primary" /> What is Data Drift?</h4>
-            <p>
-              Data drift represents the change in data distributions over time. In a retail setting, this happens due to seasonal demand shifts, price inflation, changes in customer purchasing frequencies, or rebranding, which alters customer habits.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <h4 className="font-bold text-white flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-secondary" /> Why does PSI matter?</h4>
-            <p>
-              The Population Stability Index (PSI) measures how much a variable has changed between two points in time. A high PSI (&gt; 0.25) means the data has drifted significantly. When this happens, our models no longer represent current realities.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <h4 className="font-bold text-white flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5 text-warning" /> Action Plan</h4>
-            <p>
-              If a feature flags a **Retrain Alert**, the system recommends re-running Phase 3 (segmentation) and Phase 4 (supervised model training) to update classifications and decision boundaries, maintaining inference accuracy.
-            </p>
-          </div>
-        </div>
-      </div>
 
     </div>
   );

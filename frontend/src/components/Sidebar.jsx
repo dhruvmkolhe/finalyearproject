@@ -6,68 +6,41 @@ import {
   Sliders, 
   Activity, 
   ShieldAlert,
-  MessageSquare
+  MessageSquare,
+  LogOut
 } from 'lucide-react';
 
-// Custom coded SVG logo: neural network nodes + prediction trend line
 const PredictIQLogo = () => (
-  <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 drop-shadow-xl">
+  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 shrink-0">
     <defs>
-      <linearGradient id="piq-bg" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#6366F1" />
-        <stop offset="1" stopColor="#22D3EE" />
+      <linearGradient id="sidebar-wave-gradient" x1="0" y1="100" x2="100" y2="0" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#00C9FF" />
+        <stop offset="100%" stopColor="#7B2FFF" />
       </linearGradient>
-      <filter id="piq-glow">
-        <feGaussianBlur stdDeviation="1.5" result="blur" />
-        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
     </defs>
-
-    {/* Rounded background with gradient */}
-    <rect width="40" height="40" rx="10" fill="url(#piq-bg)" />
-    {/* Inner highlight border */}
-    <rect x="1" y="1" width="38" height="38" rx="9" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
-
-    {/* Neural network — diamond of 4 nodes */}
-    {/* Top → Left */}
-    <line x1="20" y1="8" x2="8" y2="22" stroke="rgba(255,255,255,0.28)" strokeWidth="1.1" strokeLinecap="round" />
-    {/* Top → Right */}
-    <line x1="20" y1="8" x2="32" y2="22" stroke="rgba(255,255,255,0.28)" strokeWidth="1.1" strokeLinecap="round" />
-    {/* Left → Bottom */}
-    <line x1="8" y1="22" x2="20" y2="33" stroke="rgba(255,255,255,0.18)" strokeWidth="1.1" strokeLinecap="round" />
-    {/* Right → Bottom */}
-    <line x1="32" y1="22" x2="20" y2="33" stroke="rgba(255,255,255,0.18)" strokeWidth="1.1" strokeLinecap="round" />
-    {/* Left ↔ Right */}
-    <line x1="8" y1="22" x2="32" y2="22" stroke="rgba(255,255,255,0.13)" strokeWidth="1.1" strokeLinecap="round" />
-    {/* Top → Bottom (vertical) */}
-    <line x1="20" y1="8" x2="20" y2="33" stroke="rgba(255,255,255,0.1)" strokeWidth="1.1" strokeLinecap="round" />
-
-    {/* Prediction trend line — bold upward stroke with glow */}
-    <polyline
-      filter="url(#piq-glow)"
-      points="6,32 12,24 19,27 34,12"
-      stroke="white" strokeWidth="2.3"
-      strokeLinecap="round" strokeLinejoin="round"
+    {/* Background with Navy Blue */}
+    <rect width="100" height="100" rx="24" fill="#0B1D3A" />
+    
+    {/* Stylized Q (Drawn in Crisp White) */}
+    <circle cx="50" cy="48" r="22" stroke="#FFFFFF" strokeWidth="5.5" strokeLinecap="round" />
+    <path d="M 64,62 L 76,74" stroke="#FFFFFF" strokeWidth="5.5" strokeLinecap="round" />
+    
+    {/* Rising Waveform passing through the center of Q */}
+    <path 
+      d="M 18,72 Q 32,72 44,52 T 72,28" 
+      stroke="url(#sidebar-wave-gradient)" 
+      strokeWidth="5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
     />
-    {/* Arrowhead */}
-    <polyline
-      points="29,10 34,12 32,17"
-      stroke="white" strokeWidth="2.3"
-      strokeLinecap="round" strokeLinejoin="round"
-    />
-
-    {/* Nodes */}
-    <circle cx="20" cy="8" r="3" fill="white" fillOpacity="0.95" />
-    <circle cx="8" cy="22" r="2.2" fill="white" fillOpacity="0.6" />
-    <circle cx="32" cy="22" r="2.2" fill="white" fillOpacity="0.6" />
-    <circle cx="20" cy="33" r="1.7" fill="white" fillOpacity="0.35" />
-
-    {/* Bright dot at trend peak (top-right) */}
-    <circle cx="34" cy="12" r="2" fill="white" fillOpacity="0.9" />
+    
+    {/* Highlight nodes */}
+    <circle cx="44" cy="52" r="3.5" fill="#00C9FF" />
+    <circle cx="72" cy="28" r="4" fill="#7B2FFF" />
   </svg>
 );
 
-const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
+const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen, onLogout }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'segments', label: 'Customer Segments', icon: Users },
@@ -129,7 +102,26 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
           })}
         </nav>
 
-
+        {/* User / Logout Section at Bottom */}
+        <div className="p-4 border-t border-white/10 bg-white/[0.01]">
+          <div className="flex items-center justify-between gap-3 px-2 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-white truncate">
+                {localStorage.getItem('authUser') || 'Administrator'}
+              </p>
+              <p className="text-[10px] text-textMuted uppercase font-medium tracking-wider">
+                Session Active
+              </p>
+            </div>
+            <button
+              onClick={onLogout}
+              title="Logout Session"
+              className="p-2 rounded-xl text-textMuted hover:text-danger hover:bg-danger/10 border border-transparent hover:border-danger/20 transition-all duration-200 cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
 
       </aside>
     </>

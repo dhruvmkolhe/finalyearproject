@@ -56,3 +56,11 @@ black==24.10.0
 flake8==7.1.1
 mypy==1.13.0
 isort==5.13.2
+
+# Agentic Chatbot RAG dependencies
+langchain==0.3.14
+langchain-community==0.3.14
+langchain-openai==0.3.0
+langsmith==0.1.147
+openai==1.58.1
+

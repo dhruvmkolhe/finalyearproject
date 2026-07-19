@@ -8,14 +8,30 @@ import Predict from './pages/Predict';
 import Live from './pages/Live';
 import Drift from './pages/Drift';
 import Chat from './pages/Chat';
+import Login from './pages/Login';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    localStorage.getItem('isAuthenticated') === 'true'
+  );
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [systemStatus, setSystemStatus] = useState('degraded');
   const [apiBaseUrl] = useState(import.meta.env.VITE_API_URL || 'http://localhost:8000');
+  const [activeModalImage, setActiveModalImage] = useState(null);
 
   useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setActiveModalImage(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
     const checkHealth = async () => {
       try {
         const res = await fetch(`${apiBaseUrl}/api/health`);
@@ -32,28 +48,11 @@ function App() {
     checkHealth();
     const interval = setInterval(checkHealth, 10000);
     return () => clearInterval(interval);
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, isAuthenticated]);
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'dashboard':
-        return <Home apiBaseUrl={apiBaseUrl} />;
-      case 'segments':
-        return <Segments apiBaseUrl={apiBaseUrl} />;
-      case 'models':
-        return <Models apiBaseUrl={apiBaseUrl} />;
-      case 'predict':
-        return <Predict apiBaseUrl={apiBaseUrl} />;
-      case 'live':
-        return <Live apiBaseUrl={apiBaseUrl} />;
-      case 'drift':
-        return <Drift apiBaseUrl={apiBaseUrl} />;
-      case 'chat':
-        return <Chat apiBaseUrl={apiBaseUrl} />;
-      default:
-        return <Home apiBaseUrl={apiBaseUrl} />;
-    }
-  };
+  if (!isAuthenticated) {
+    return <Login apiBaseUrl={apiBaseUrl} onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className="flex min-h-screen bg-[#0A0F1E] text-[#F1F5F9] font-sans">
@@ -63,6 +62,12 @@ function App() {
         setCurrentPage={setCurrentPage} 
         isOpen={isSidebarOpen} 
         setIsOpen={setIsSidebarOpen} 
+        onLogout={() => {
+          localStorage.removeItem('isAuthenticated');
+          localStorage.removeItem('authUser');
+          localStorage.removeItem('authToken');
+          setIsAuthenticated(false);
+        }}
       />
 
       {/* Main Content Area */}
@@ -72,9 +77,59 @@ function App() {
           systemStatus={systemStatus} 
         />
         <main className="flex-1 p-6 overflow-y-auto">
-          {renderPage()}
+          <div className={currentPage === 'dashboard' ? '' : 'hidden'}>
+            <Home apiBaseUrl={apiBaseUrl} active={currentPage === 'dashboard'} />
+          </div>
+          <div className={currentPage === 'segments' ? '' : 'hidden'}>
+            <Segments apiBaseUrl={apiBaseUrl} setActiveModalImage={setActiveModalImage} />
+          </div>
+          <div className={currentPage === 'models' ? '' : 'hidden'}>
+            <Models apiBaseUrl={apiBaseUrl} setActiveModalImage={setActiveModalImage} />
+          </div>
+          <div className={currentPage === 'predict' ? '' : 'hidden'}>
+            <Predict apiBaseUrl={apiBaseUrl} />
+          </div>
+          <div className={currentPage === 'live' ? '' : 'hidden'}>
+            <Live apiBaseUrl={apiBaseUrl} />
+          </div>
+          <div className={currentPage === 'drift' ? '' : 'hidden'}>
+            <Drift apiBaseUrl={apiBaseUrl} />
+          </div>
+          <div className={currentPage === 'chat' ? '' : 'hidden'}>
+            <Chat apiBaseUrl={apiBaseUrl} />
+          </div>
         </main>
       </div>
+
+      {/* Global Fullscreen Image Preview Modal */}
+      {activeModalImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fade-in cursor-pointer"
+          onClick={() => setActiveModalImage(null)}
+        >
+          <div 
+            className="relative max-w-4xl w-full bg-[#0E1325] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-4 cursor-default animate-zoom-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setActiveModalImage(null)}
+              className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors text-xl font-bold p-2"
+              aria-label="Close modal"
+            >
+              ✕
+            </button>
+            <h3 className="text-xl font-bold text-white text-center">{activeModalImage.label}</h3>
+            <p className="text-textMuted text-sm text-center -mt-2 max-w-2xl">{activeModalImage.description}</p>
+            <div className="w-full flex items-center justify-center p-2 bg-white/[0.02] rounded-xl border border-white/5 mt-2">
+              <img 
+                src={activeModalImage.src} 
+                alt={activeModalImage.label} 
+                className="max-h-[65vh] object-contain rounded-lg shadow-xl"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

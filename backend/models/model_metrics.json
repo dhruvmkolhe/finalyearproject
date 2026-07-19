@@ -1,0 +1,1 @@
+{"stacking_ensemble": {"roc_auc": 0.75}, "random_forest": {"roc_auc": 0.7}, "logistic_regression": {"roc_auc": 0.72}, "xgboost": {"roc_auc": 0.71}, "lightgbm": {"roc_auc": 0.7}}

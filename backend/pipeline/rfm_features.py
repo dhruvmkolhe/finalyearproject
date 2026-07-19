@@ -31,8 +31,22 @@ def run_rfm_engineering(
     
     if not os.path.exists(cleaned_path):
         raise FileNotFoundError(f"Cleaned retail data not found at: {cleaned_path}")
-    if not os.path.exists(raw_path):
-        raise FileNotFoundError(f"Raw retail data not found at: {raw_path}")
+    
+    cached_raw_path = os.path.join(os.path.dirname(cleaned_path), "raw_subset.csv")
+    if not os.path.exists(raw_path) and not os.path.exists(cached_raw_path):
+        logger.info(f"Raw data file not found at: {raw_path} and cached subset missing. Attempting to download from UCI Repository...")
+        import urllib.request
+        os.makedirs(os.path.dirname(raw_path), exist_ok=True)
+        url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00352/Online%20Retail.xlsx"
+        try:
+            opener = urllib.request.build_opener()
+            opener.addheaders = [('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')]
+            urllib.request.install_opener(opener)
+            
+            urllib.request.urlretrieve(url, raw_path)
+            logger.info("Successfully downloaded Online Retail dataset from UCI.")
+        except Exception as download_err:
+            raise FileNotFoundError(f"Raw data file not found at {raw_path} and failed to download from UCI: {download_err}")
 
     # Load cleaned dataset
     logger.info("Loading cleaned retail dataset...")

@@ -44,7 +44,7 @@ const AnimatedCounter = ({ value, duration = 1, formatter = (val) => val.toFixed
   return <span>{formatter(displayVal)}</span>;
 };
 
-const Home = ({ apiBaseUrl }) => {
+const Home = ({ apiBaseUrl, active }) => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const [segments, setSegments] = useState(null);
@@ -52,45 +52,93 @@ const Home = ({ apiBaseUrl }) => {
   const [history, setHistory] = useState([]);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch stats
-        const statsRes = await fetch(`${apiBaseUrl}/api/dataset/stats`);
-        const statsData = await statsRes.json();
-        
-        // Fetch segments
-        const segRes = await fetch(`${apiBaseUrl}/api/segments/overview`);
-        const segData = await segRes.json();
-        
-        // Fetch metrics
-        const metRes = await fetch(`${apiBaseUrl}/api/models/metrics`);
-        const metData = await metRes.json();
-        
-        // Fetch history
-        const histRes = await fetch(`${apiBaseUrl}/api/predict/history`);
-        const histData = await histRes.json();
-        
-        if (statsData.success && segData.success && metData.success && histData.success) {
-          setStats(statsData.data);
-          setSegments(segData.data);
-          setMetrics(metData.data);
-          setHistory(histData.data.slice(0, 5)); // Take latest 5
-        } else {
-          setError("Failed to fetch dashboard data.");
-        }
-      } catch (err) {
-        console.error(err);
-        setError("Network error fetching console metrics.");
-      } finally {
-        setLoading(false);
+  const fetchLocalHistoryOnly = async () => {
+    try {
+      const histRes = await fetch(`${apiBaseUrl}/api/predict/history`);
+      const histData = await histRes.json();
+      if (histData.success) {
+        setHistory(histData.data.slice(0, 5));
+        sessionStorage.setItem('predictiq_history', JSON.stringify(histData.data.slice(0, 5)));
       }
-    };
+    } catch (err) {
+      console.error("Error auto-updating dashboard prediction logs:", err);
+    }
+  };
 
-    fetchData();
+  const fetchData = async (force = false) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (force) {
+        sessionStorage.removeItem('predictiq_stats');
+        sessionStorage.removeItem('predictiq_segments');
+        sessionStorage.removeItem('predictiq_metrics');
+        sessionStorage.removeItem('predictiq_history');
+      }
+
+      if (!force) {
+        const cachedStats = sessionStorage.getItem('predictiq_stats');
+        const cachedSegments = sessionStorage.getItem('predictiq_segments');
+        const cachedMetrics = sessionStorage.getItem('predictiq_metrics');
+        const cachedHistory = sessionStorage.getItem('predictiq_history');
+
+        if (cachedStats && cachedSegments && cachedMetrics && cachedHistory) {
+          setStats(JSON.parse(cachedStats));
+          setSegments(JSON.parse(cachedSegments));
+          setMetrics(JSON.parse(cachedMetrics));
+          setHistory(JSON.parse(cachedHistory));
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Fetch stats
+      const statsRes = await fetch(`${apiBaseUrl}/api/dataset/stats`);
+      const statsData = await statsRes.json();
+      
+      // Fetch segments
+      const segRes = await fetch(`${apiBaseUrl}/api/segments/overview`);
+      const segData = await segRes.json();
+      
+      // Fetch metrics
+      const metRes = await fetch(`${apiBaseUrl}/api/models/metrics`);
+      const metData = await metRes.json();
+      
+      // Fetch history
+      const histRes = await fetch(`${apiBaseUrl}/api/predict/history`);
+      const histData = await histRes.json();
+      
+      if (statsData.success && segData.success && metData.success && histData.success) {
+        setStats(statsData.data);
+        setSegments(segData.data);
+        setMetrics(metData.data);
+        setHistory(histData.data.slice(0, 5)); // Take latest 5
+        
+        sessionStorage.setItem('predictiq_stats', JSON.stringify(statsData.data));
+        sessionStorage.setItem('predictiq_segments', JSON.stringify(segData.data));
+        sessionStorage.setItem('predictiq_metrics', JSON.stringify(metData.data));
+        sessionStorage.setItem('predictiq_history', JSON.stringify(histData.data.slice(0, 5)));
+      } else {
+        setError("Failed to fetch dashboard data.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Network error fetching console metrics.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData(false);
   }, [apiBaseUrl]);
+
+  useEffect(() => {
+    if (active) {
+      fetchLocalHistoryOnly();
+    }
+  }, [active, apiBaseUrl]);
 
   if (loading) {
     return (
@@ -118,7 +166,7 @@ const Home = ({ apiBaseUrl }) => {
         <h3 className="text-lg font-bold text-white">Dashboard Loading Issue</h3>
         <p className="text-textMuted text-sm max-w-md">{error}</p>
         <button 
-          onClick={() => window.location.reload()}
+          onClick={() => fetchData(true)}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-primary hover:bg-primary/80 transition-all duration-200"
         >
           <RefreshCw className="w-4 h-4" /> Retry Connection
@@ -126,6 +174,19 @@ const Home = ({ apiBaseUrl }) => {
       </div>
     );
   }
+
+  // Helper to format ISO timestamp strings into readable local date and time
+  const formatTimestamp = (isoString) => {
+    if (!isoString) return 'N/A';
+    try {
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return isoString;
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' + 
+             date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    } catch (e) {
+      return isoString;
+    }
+  };
 
   // Centroid calculations for average monetary values
   const avgOrderVal = stats ? (stats.total_records > 0 ? (stats.total_records * 10.79 / stats.total_customers) : 0) : 0;
@@ -161,9 +222,19 @@ const Home = ({ apiBaseUrl }) => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Executive Dashboard</h1>
-        <p className="text-textMuted text-sm mt-1">Predictive analysis based on the UCI Online Retail Dataset timeline.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Executive Dashboard</h1>
+          <p className="text-textMuted text-sm mt-1">Predictive analysis based on the UCI Online Retail Dataset timeline.</p>
+        </div>
+        <button
+          onClick={() => fetchData(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-textMuted hover:text-white bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 transition-all duration-200 self-start sm:self-auto"
+          title="Force refresh console stats cache"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Refresh Data</span>
+        </button>
       </div>
 
       {/* Top 4 KPI Cards */}
@@ -406,7 +477,7 @@ const Home = ({ apiBaseUrl }) => {
                     return (
                       <tr key={row.id} className="border-b border-white/5 text-textPrimary hover:bg-white/[0.01]">
                         <td className="py-3 font-medium text-textMuted">
-                          {row.timestamp ? row.timestamp.substring(11, 19) : 'N/A'}
+                          {formatTimestamp(row.timestamp)}
                         </td>
                         <td className="py-3">
                           <span className="font-semibold text-white">R:{row.recency}</span> | 

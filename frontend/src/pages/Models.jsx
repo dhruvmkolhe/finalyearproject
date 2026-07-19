@@ -1,31 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Sparkles, HelpCircle, RefreshCw, BarChart2 } from 'lucide-react';
 
-const Models = ({ apiBaseUrl }) => {
+const Models = ({ apiBaseUrl, setActiveModalImage }) => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [activeConfusionModel, setActiveConfusionModel] = useState('stacking_ensemble');
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`${apiBaseUrl}/api/models/metrics`);
-        const result = await res.json();
-        if (result.success) {
-          setData(result.data);
-        } else {
-          setError(result.error || "Failed to fetch model metrics.");
+  const fetchData = async (force = false) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!force) {
+        const cachedModels = sessionStorage.getItem('predictiq_models');
+        if (cachedModels) {
+          setData(JSON.parse(cachedModels));
+          setLoading(false);
+          return;
         }
-      } catch (err) {
-        console.error(err);
-        setError("Error connecting to models validation API.");
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchData();
+      
+      const res = await fetch(`${apiBaseUrl}/api/models/metrics`);
+      const result = await res.json();
+      if (result.success) {
+        setData(result.data);
+        sessionStorage.setItem('predictiq_models', JSON.stringify(result.data));
+      } else {
+        setError(result.error || "Failed to fetch model metrics.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Error connecting to models validation API.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData(false);
   }, [apiBaseUrl]);
 
   if (loading) {
@@ -87,11 +100,21 @@ const Models = ({ apiBaseUrl }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Model Validation Arena</h1>
-        <p className="text-textMuted text-sm mt-1">
-          Comparative analysis and explainability metrics for 5 customer purchase behavior classifiers.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Model Validation Arena</h1>
+          <p className="text-textMuted text-sm mt-1">
+            Comparative analysis and explainability metrics for 5 customer purchase behavior classifiers.
+          </p>
+        </div>
+        <button
+          onClick={() => fetchData(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-textMuted hover:text-white bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 transition-all duration-200 self-start sm:self-auto"
+          title="Force refresh validation stats cache"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Refresh Data</span>
+        </button>
       </div>
 
       {/* Recommended Model Badge */}
@@ -188,7 +211,12 @@ const Models = ({ apiBaseUrl }) => {
             <img 
               src={`${apiBaseUrl}/api/charts/roc?t=${new Date().getTime()}`} 
               alt="ROC Curve overlay" 
-              className="max-h-[350px] object-contain rounded-lg"
+              className="max-h-[350px] object-contain rounded-lg cursor-pointer hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
+              onClick={() => setActiveModalImage({
+                src: `${apiBaseUrl}/api/charts/roc?t=${new Date().getTime()}`,
+                label: "Receiver Operating Characteristic (ROC)",
+                description: "Visualizes sensitivity trade-offs across all classification thresholds."
+              })}
             />
           </div>
         </div>
@@ -201,7 +229,12 @@ const Models = ({ apiBaseUrl }) => {
             <img 
               src={`${apiBaseUrl}/api/charts/pr?t=${new Date().getTime()}`} 
               alt="Precision-Recall Curve overlay" 
-              className="max-h-[350px] object-contain rounded-lg"
+              className="max-h-[350px] object-contain rounded-lg cursor-pointer hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
+              onClick={() => setActiveModalImage({
+                src: `${apiBaseUrl}/api/charts/pr?t=${new Date().getTime()}`,
+                label: "Precision-Recall Curve Overlay",
+                description: "Key validator for evaluating models under class imbalance."
+              })}
             />
           </div>
         </div>
@@ -231,7 +264,12 @@ const Models = ({ apiBaseUrl }) => {
             <img 
               src={`${apiBaseUrl}/api/charts/${confusionMapping[activeConfusionModel]}?t=${new Date().getTime()}`} 
               alt={`${activeConfusionModel} confusion matrix`}
-              className="max-h-[250px] object-contain rounded-lg"
+              className="max-h-[250px] object-contain rounded-lg cursor-pointer hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
+              onClick={() => setActiveModalImage({
+                src: `${apiBaseUrl}/api/charts/${confusionMapping[activeConfusionModel]}?t=${new Date().getTime()}`,
+                label: `${activeConfusionModel.replace('_', ' ').toUpperCase()} Confusion Matrix`,
+                description: "Actual vs predicted classification matrix."
+              })}
             />
           </div>
         </div>
@@ -246,7 +284,12 @@ const Models = ({ apiBaseUrl }) => {
             <img 
               src={`${apiBaseUrl}/api/charts/rf_importance?t=${new Date().getTime()}`} 
               alt="Random forest feature importance"
-              className="max-h-[250px] object-contain rounded-lg"
+              className="max-h-[250px] object-contain rounded-lg cursor-pointer hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
+              onClick={() => setActiveModalImage({
+                src: `${apiBaseUrl}/api/charts/rf_importance?t=${new Date().getTime()}`,
+                label: "Random Forest Feature Importances",
+                description: "Relative feature contribution calculated from Gini impurity indices."
+              })}
             />
           </div>
         </div>
@@ -261,7 +304,12 @@ const Models = ({ apiBaseUrl }) => {
             <img 
               src={`${apiBaseUrl}/api/charts/shap_summary?t=${new Date().getTime()}`} 
               alt="SHAP summary beeswarm plot"
-              className="max-h-[250px] object-contain rounded-lg"
+              className="max-h-[250px] object-contain rounded-lg cursor-pointer hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
+              onClick={() => setActiveModalImage({
+                src: `${apiBaseUrl}/api/charts/shap_summary?t=${new Date().getTime()}`,
+                label: "SHAP Beeswarm Explanations",
+                description: "Global feature impact distributions mapping XGBoost input correlations."
+              })}
             />
           </div>
         </div>

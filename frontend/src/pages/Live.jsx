@@ -90,8 +90,13 @@ const Live = ({ apiBaseUrl }) => {
     });
     processedLastSecRef.current = 0;
 
-    // Connect to WebSocket (convert http endpoint to ws)
-    const wsUrl = apiBaseUrl.replace('http', 'ws') + '/ws/realtime-predict';
+    // Connect to WebSocket (convert http endpoint to ws, removing trailing slash if present)
+    let cleanBaseUrl = apiBaseUrl.trim();
+    if (cleanBaseUrl.endsWith('/')) {
+      cleanBaseUrl = cleanBaseUrl.slice(0, -1);
+    }
+    const token = localStorage.getItem('authToken');
+    const wsUrl = cleanBaseUrl.replace(/^http/, 'ws') + `/ws/realtime-predict${token ? `?token=${encodeURIComponent(token)}` : ''}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     setRunning(true);
