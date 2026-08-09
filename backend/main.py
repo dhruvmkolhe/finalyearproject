@@ -552,7 +552,7 @@ def get_models_metrics(current_user: User = Depends(get_current_user)):
     """
     global model_metrics
     if not model_metrics:
-        metrics_path = os.path.join(models_dir, "model_metrics.json")
+        metrics_path = os.path.join(os.getcwd(), "models", "model_metrics.json")
         if os.path.exists(metrics_path):
             try:
                 with open(metrics_path, "r") as f:
