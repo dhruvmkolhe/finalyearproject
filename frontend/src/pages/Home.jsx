@@ -102,46 +102,55 @@ const Home = ({ apiBaseUrl, active }) => {
       const token = localStorage.getItem('authToken');
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
-      // Fetch stats
-      const statsRes = await fetch(`${apiBaseUrl}/api/dataset/stats`, { headers });
-      const statsData = await statsRes.json();
+      // Fetch all dashboard data endpoints in parallel
+      const [statsRes, segRes, metRes, histRes] = await Promise.all([
+        fetch(`${apiBaseUrl}/api/dataset/stats`, { headers }).catch(e => ({ json: async () => ({ success: false, error: e.message }) })),
+        fetch(`${apiBaseUrl}/api/segments/overview`, { headers }).catch(e => ({ json: async () => ({ success: false, error: e.message }) })),
+        fetch(`${apiBaseUrl}/api/models/metrics`, { headers }).catch(e => ({ json: async () => ({ success: false, error: e.message }) })),
+        fetch(`${apiBaseUrl}/api/predict/history`, { headers }).catch(e => ({ json: async () => ({ success: false, error: e.message }) }))
+      ]);
+
+      const [statsData, segData, metData, histData] = await Promise.all([
+        statsRes.json(),
+        segRes.json(),
+        metRes.json(),
+        histRes.json()
+      ]);
       
-      // Fetch segments
-      const segRes = await fetch(`${apiBaseUrl}/api/segments/overview`, { headers });
-      const segData = await segRes.json();
-      
-      // Fetch metrics
-      const metRes = await fetch(`${apiBaseUrl}/api/models/metrics`, { headers });
-      const metData = await metRes.json();
-      
-      // Fetch history
-      const histRes = await fetch(`${apiBaseUrl}/api/predict/history`, { headers });
-      const histData = await histRes.json();
-      
-      if (statsData.success && segData.success && metData.success && histData.success) {
-        setStats(statsData.data);
-        setSegments(segData.data);
-        setMetrics(metData.data);
-        setHistory(histData.data.slice(0, 5)); // Take latest 5
-        
-        sessionStorage.setItem('predictiq_stats', JSON.stringify(statsData.data));
-        sessionStorage.setItem('predictiq_segments', JSON.stringify(segData.data));
-        sessionStorage.setItem('predictiq_metrics', JSON.stringify(metData.data));
-        sessionStorage.setItem('predictiq_history', JSON.stringify(histData.data.slice(0, 5)));
+      const allSuccessful = statsData.success && segData.success && metData.success && histData.success;
+      const anySuccessful = statsData.success || segData.success || metData.success || histData.success;
+
+      if (allSuccessful || (anySuccessful && retryCount >= 2)) {
+        if (statsData.success) {
+          setStats(statsData.data);
+          sessionStorage.setItem('predictiq_stats', JSON.stringify(statsData.data));
+        }
+        if (segData.success) {
+          setSegments(segData.data);
+          sessionStorage.setItem('predictiq_segments', JSON.stringify(segData.data));
+        }
+        if (metData.success) {
+          setMetrics(metData.data);
+          sessionStorage.setItem('predictiq_metrics', JSON.stringify(metData.data));
+        }
+        if (histData.success && Array.isArray(histData.data)) {
+          setHistory(histData.data.slice(0, 5));
+          sessionStorage.setItem('predictiq_history', JSON.stringify(histData.data.slice(0, 5)));
+        }
         setWakingUp(false);
       } else {
         if (retryCount < 3) {
           setWakingUp(true);
-          await new Promise(r => setTimeout(r, 4000));
+          await new Promise(r => setTimeout(r, 1200));
           return fetchData(force, retryCount + 1);
         }
-        setError("Failed to fetch dashboard data. The backend server on Render may still be spinning up from sleep mode.");
+        setError("Failed to fetch complete dashboard data. The backend server on Render may still be spinning up from sleep mode.");
       }
     } catch (err) {
       console.error(err);
       if (retryCount < 3) {
         setWakingUp(true);
-        await new Promise(r => setTimeout(r, 4000));
+        await new Promise(r => setTimeout(r, 1200));
         return fetchData(force, retryCount + 1);
       }
       setError("Network error fetching console metrics. Check if Render backend is online and CORS is configured.");

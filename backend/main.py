@@ -390,17 +390,19 @@ async def async_startup_tasks():
         logger.info("Loading ML models and scaler in background...")
         await loop.run_in_executor(None, load_models_and_scaler)
         
-        # Precompute cached dashboard metrics
+        # Precompute cached dashboard metrics immediately
         logger.info("Pre-calculating dataset and segment caches in background...")
         await loop.run_in_executor(None, precompute_cached_data)
         
-        # Pre-cache diagrams
-        logger.info("Pre-caching structural system architecture diagrams...")
-        for name in DIAGRAMS_CODE.keys():
-            try:
-                await loop.run_in_executor(None, get_mermaid_png_path, name)
-            except Exception as e:
-                logger.error(f"Startup pre-cache failed for {name}: {e}")
+        # Pre-cache diagrams in non-blocking background task
+        async def _cache_diagrams():
+            for name in DIAGRAMS_CODE.keys():
+                try:
+                    await loop.run_in_executor(None, get_mermaid_png_path, name)
+                except Exception as e:
+                    logger.error(f"Startup diagram pre-cache failed for {name}: {e}")
+        
+        asyncio.create_task(_cache_diagrams())
         logger.info("Full background system initialization completed.")
     except Exception as e:
         logger.critical(f"Critical failure in background startup task: {str(e)}", exc_info=True)
@@ -492,6 +494,12 @@ def get_dataset_stats(current_user: User = Depends(get_current_user)):
     Returns precomputed summaries of the Online Retail dataset.
     """
     if not cached_dataset_stats:
+        try:
+            precompute_cached_data()
+        except Exception as e:
+            logger.error(f"Error computing dataset stats on-demand: {e}")
+            
+    if not cached_dataset_stats:
         return {"success": False, "data": None, "error": "Dataset stats not precomputed. Ensure cleaned_retail.csv exists."}
     return {
         "success": True,
@@ -504,6 +512,12 @@ def get_segments_overview(current_user: User = Depends(get_current_user)):
     """
     Returns precomputed segment distributions, centroid details, and month-over-month trends.
     """
+    if not cached_segment_overview:
+        try:
+            precompute_cached_data()
+        except Exception as e:
+            logger.error(f"Error computing segment overview on-demand: {e}")
+            
     if not cached_segment_overview:
         return {"success": False, "data": None, "error": "Segment overview not precomputed. Run segmentation first."}
     return {
@@ -536,6 +550,16 @@ def get_models_metrics(current_user: User = Depends(get_current_user)):
     """
     Returns validation metrics of trained classifiers, recommending the best performer.
     """
+    global model_metrics
+    if not model_metrics:
+        metrics_path = os.path.join(models_dir, "model_metrics.json")
+        if os.path.exists(metrics_path):
+            try:
+                with open(metrics_path, "r") as f:
+                    model_metrics = json.load(f)
+            except Exception as e:
+                logger.error(f"Error loading model metrics on demand: {e}")
+                
     if not model_metrics:
         return {"success": False, "data": None, "error": "Model metrics not found. Run model training first."}
     
