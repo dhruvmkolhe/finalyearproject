@@ -458,7 +458,7 @@ def login_user(login_in: LoginRequest):
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "POST", "HEAD"])
 def root():
     return {
         "service": "PredictIQ REST & WebSocket API",
@@ -467,7 +467,7 @@ def root():
         "documentation": "/docs"
     }
 
-@app.get("/api/health")
+@app.api_route("/api/health", methods=["GET", "POST", "HEAD"])
 def get_health():
     """
     Returns API health check and models load status.
