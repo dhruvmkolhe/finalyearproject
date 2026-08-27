@@ -1287,6 +1287,9 @@ def trigger_drift_check(background_tasks: BackgroundTasks, current_user: User = 
             else:
                 logger.info("MLOps: Auto-retrain loop skipped because retraining is already in progress.")
                 
+        import gc
+        gc.collect()
+
         return {
             "success": True,
             "data": report,

@@ -185,6 +185,11 @@ def run_drift_detection(
         json.dump(report, f, indent=4)
     logger.info(f"Saved drift report JSON to {report_json_path}")
 
+    # Free memory explicitly for Render free tier (512MB RAM optimization)
+    import gc
+    del df_ref, df_prod
+    gc.collect()
+
     return report
 
 if __name__ == "__main__":
