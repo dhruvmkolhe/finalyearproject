@@ -29,6 +29,8 @@ const Live = ({ apiBaseUrl }) => {
   const ppsTimerRef = useRef(null);
   const processedLastSecRef = useRef(0);
 
+  const [streamError, setStreamError] = useState(null);
+
   // Auto-scroll to bottom of the feed (non-intrusive container-level scroll)
   useEffect(() => {
     const container = feedContainerRef.current;
@@ -73,6 +75,7 @@ const Live = ({ apiBaseUrl }) => {
 
   const startStream = () => {
     if (wsRef.current) wsRef.current.close();
+    setStreamError(null);
     
     // Clear feed and reset stats
     setFeed([]);
@@ -90,67 +93,88 @@ const Live = ({ apiBaseUrl }) => {
     });
     processedLastSecRef.current = 0;
 
-    // Connect to WebSocket (convert http endpoint to ws, removing trailing slash if present)
+    // Build robust WebSocket URL
     let cleanBaseUrl = apiBaseUrl.trim();
     if (cleanBaseUrl.endsWith('/')) {
       cleanBaseUrl = cleanBaseUrl.slice(0, -1);
     }
+    
+    // Determine ws/wss protocol safely
+    const isHttps = cleanBaseUrl.startsWith('https://') || window.location.protocol === 'https:';
+    const wsProtocol = isHttps ? 'wss:' : 'ws:';
+    const hostUrl = cleanBaseUrl.replace(/^https?:\/\//, '');
+    
     const token = localStorage.getItem('authToken');
-    const wsUrl = cleanBaseUrl.replace(/^http/, 'ws') + `/ws/realtime-predict${token ? `?token=${encodeURIComponent(token)}` : ''}`;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-    setRunning(true);
+    const wsUrl = `${wsProtocol}//${hostUrl}/ws/realtime-predict${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+      setRunning(true);
 
-    ws.onopen = () => {
-      setConnected(true);
-      console.log("WebSocket connected successfully.");
-    };
+      ws.onopen = () => {
+        setConnected(true);
+        setStreamError(null);
+        console.log("WebSocket connected successfully.");
+      };
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.error) {
-        console.error(data.error);
-        ws.close();
-        return;
-      }
-
-      // Add to feed list, capping at 50 items
-      setFeed(prev => {
-        const updated = [...prev, data];
-        if (updated.length > 50) updated.shift();
-        return updated;
-      });
-
-      // Update counters
-      processedLastSecRef.current += 1;
-
-      setStats(prev => {
-        const seg = data.segment || 'Unknown';
-        const updatedSegDist = { ...prev.segmentDistribution };
-        if (updatedSegDist[seg] !== undefined) {
-          updatedSegDist[seg] += 1;
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.error) {
+          console.error("Stream server error:", data.error);
+          setStreamError(data.error);
+          setConnected(false);
+          setRunning(false);
+          ws.close();
+          return;
         }
 
-        return {
-          totalProcessed: data.total_processed,
-          correct: prev.correct + (data.prediction === data.true_label ? 1 : 0),
-          accuracy: data.running_accuracy,
-          segmentDistribution: updatedSegDist,
-          pps: prev.pps
-        };
-      });
-    };
+        // Add to feed list, capping at 50 items
+        setFeed(prev => {
+          const updated = [...prev, data];
+          if (updated.length > 50) updated.shift();
+          return updated;
+        });
 
-    ws.onclose = () => {
-      setConnected(false);
+        // Update counters
+        processedLastSecRef.current += 1;
+
+        setStats(prev => {
+          const seg = data.segment || 'Unknown';
+          const updatedSegDist = { ...prev.segmentDistribution };
+          if (updatedSegDist[seg] !== undefined) {
+            updatedSegDist[seg] += 1;
+          }
+
+          return {
+            totalProcessed: data.total_processed,
+            correct: prev.correct + (data.prediction === data.true_label ? 1 : 0),
+            accuracy: data.running_accuracy,
+            segmentDistribution: updatedSegDist,
+            pps: prev.pps
+          };
+        });
+      };
+
+      ws.onclose = () => {
+        setConnected(false);
+        setRunning(false);
+        console.log("WebSocket closed.");
+      };
+
+      ws.onerror = (err) => {
+        console.error("WebSocket connection error:", err);
+        setStreamError("Unable to establish WebSocket connection to backend stream server.");
+        setConnected(false);
+        setRunning(false);
+        ws.close();
+      };
+    } catch (err) {
+      console.error("Failed creating WebSocket:", err);
+      setStreamError(`Failed creating WebSocket connection: ${err.message}`);
       setRunning(false);
-      console.log("WebSocket closed.");
-    };
-
-    ws.onerror = (err) => {
-      console.error("WebSocket error:", err);
-      ws.close();
-    };
+      setConnected(false);
+    }
   };
 
   const stopStream = () => {
@@ -213,6 +237,22 @@ const Live = ({ apiBaseUrl }) => {
           )}
         </div>
       </div>
+
+      {/* Stream Error Alert Banner */}
+      {streamError && (
+        <div className="flex items-center justify-between p-4 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0" />
+            <span className="font-medium">{streamError}</span>
+          </div>
+          <button 
+            onClick={() => setStreamError(null)} 
+            className="text-xs uppercase font-bold tracking-wider text-danger hover:underline ml-4"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Stats Board & Accuracy Gauge */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

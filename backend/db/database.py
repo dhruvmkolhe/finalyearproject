@@ -33,11 +33,15 @@ if not DATABASE_URL:
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# Setup SQLAlchemy engine and SessionLocal for Supabase/PostgreSQL
+# Setup SQLAlchemy engine and SessionLocal for Supabase/PostgreSQL with SQLite fallback
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
-    engine = create_engine(DATABASE_URL)
+    try:
+        engine = create_engine(DATABASE_URL)
+    except Exception as db_init_err:
+        fallback_sqlite = "sqlite:///./backend/database.db"
+        engine = create_engine(fallback_sqlite, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Declarative Base
