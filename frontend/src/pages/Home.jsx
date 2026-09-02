@@ -374,7 +374,7 @@ const Home = ({ apiBaseUrl, active }) => {
           </div>
           <div className="h-72 w-full mt-6">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={trendData} margin={{ top: 10, right: 15, left: 10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4}/>
@@ -383,10 +383,17 @@ const Home = ({ apiBaseUrl, active }) => {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="month" stroke="#94A3B8" fontSize={11} tickLine={false} />
-                <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} />
+                <YAxis 
+                  stroke="#94A3B8" 
+                  fontSize={11} 
+                  tickLine={false} 
+                  width={60} 
+                  tickFormatter={(val) => `£${val >= 1000 ? `${Math.round(val / 1000)}k` : val}`} 
+                />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#0A0F1E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
                   labelStyle={{ color: '#F1F5F9', fontWeight: 'bold' }}
+                  formatter={(value) => [`£${Number(value).toLocaleString()}`, 'Monthly Revenue']}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#6366F1" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" name="Revenue (£)" />
               </AreaChart>

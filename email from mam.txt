@@ -1,0 +1,9 @@
+Track Name: SS_12: Artificial Intelligence for Secure Smart Applications and Intelligent Decision Making
+
+
+
+Paper Title: A Behavioral Segmentation and Ensemble Learning Framework for Customer Purchase Prediction
+
+Abstract:
+Customer behavior understanding plays a crucial role in the context of present-day retail companies attempting to optimize their marketing strategies for maximal efficiency. The problem with conventional classification models is that they tend to be inefficient when handling the complexity of non-linear paths of consumers and class imbalance. This paper provides the methodology of integrating behavioral grouping with an efficient ensemble machine learning approach in order to improve the performance of prediction of consumer purchases. Firstly, the method involves density-based spatial partitioning of the transaction log of the consumers in order to group them based on their psychological and transactional features. Secondly, a stacked ensemble is formed which uses both decision trees and deep neural networks in order to provide better prediction. Moreover, in order to handle the problem of class imbalance of the data, the architecture uses a mixed resampling algorithm for preprocessing the data before feeding it to the model. Experiments performed on different transactional datasets proved that the proposed hybrid approach yields more accurate predictions in terms of accuracy and F1-scores than conventional standalone models. The effectiveness of the suggested approach was also proven by Bayesian A/B testing which showed that its usage improves net revenues. 
+Keywords— Customer segmentation, Ensemble learning, Predictive analytics, Machine learning, E-commerce 
