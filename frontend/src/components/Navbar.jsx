@@ -17,17 +17,8 @@ const Navbar = ({ setIsSidebarOpen, systemStatus }) => {
         </div>
       </div>
 
-      {/* Right side: Academic project info & system health */}
+      {/* Right side: system health */}
       <div className="flex items-center gap-6">
-        {/* Project Authors / Advisor info */}
-        <div className="hidden lg:flex flex-col text-right border-r border-white/10 pr-6">
-          <div className="text-[11px] font-semibold text-white">
-            By: Dhruv, Aditi Kesarkar, Aum Patel, Manav Patel
-          </div>
-          <div className="text-[10px] text-textMuted font-medium">
-            Supervised by: <span className="text-secondary font-semibold">Dr. Sneha</span>
-          </div>
-        </div>
 
         {/* System status dot */}
         <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-white/5 bg-white/[0.02] text-xs">
